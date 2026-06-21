@@ -60,7 +60,7 @@ export function DigestSourcePage({
                 Add to your knowledge base
               </CardTitle>
               <CardDescription>
-                The digest pipeline creates canonical markdown, generated posts, chunks, embeddings, and graph nodes.
+                The digest pipeline creates structured source records, generated posts, chunks, embeddings, and graph nodes.
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-5">
@@ -128,7 +128,7 @@ export function DigestSourcePage({
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <p>1. Extract readable content from the source.</p>
-                <p>2. Normalize it into canonical markdown.</p>
+                <p>2. Normalize it into structured memory fields.</p>
                 <p>3. Generate summary, concepts, claims, and a social post.</p>
                 <p>4. Add chunks to retrieval and concepts to the graph.</p>
               </CardContent>

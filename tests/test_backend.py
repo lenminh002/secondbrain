@@ -69,7 +69,10 @@ def test_note_ingestion_creates_knowledge_artifacts(tmp_path: Path, monkeypatch)
     detail = client.get(f"/sources/{source['id']}").json()
 
     assert sources[0]["title"] == "Transformers"
-    assert "# Summary" in detail["markdown"]
+    assert detail["summary"]
+    assert isinstance(detail["key_ideas"], list)
+    assert isinstance(detail["concepts"], list)
+    assert "Transformers" in detail["content"] or "self-attention" in detail["content"]
     assert posts[0]["source_id"] == source["id"]
     assert posts[0]["account_id"] == TEST_ACCOUNT_ID
     assert any(node["type"] == "concept" for node in graph["nodes"])
@@ -203,7 +206,7 @@ def test_pdf_ingestion_uses_extractor(tmp_path: Path, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["status"] == "ready"
-    assert "graph retrieval" in client.get(f"/sources/{response.json()['id']}").json()["markdown"]
+    assert "graph retrieval" in client.get(f"/sources/{response.json()['id']}").json()["content"]
 
 
 def test_missing_pdf_does_not_persist_source(tmp_path: Path, monkeypatch) -> None:

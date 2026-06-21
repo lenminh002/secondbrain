@@ -86,14 +86,5 @@ def commit_source_artifacts(
     chunks: list[dict[str, Any]],
     post: dict[str, Any],
     concepts: list[str],
-    markdown: str,
 ) -> None:
-    _backend().commit_source_artifacts(account_id, source, chunks, post, concepts, markdown)
-
-
-def save_document(account_id: str, source_id: str, markdown: str) -> None:
-    _backend().save_document(account_id, source_id, markdown)
-
-
-def load_document(account_id: str, source_id: str) -> str:
-    return _backend().load_document(account_id, source_id)
+    _backend().commit_source_artifacts(account_id, source, chunks, post, concepts)

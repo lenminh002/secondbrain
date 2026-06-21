@@ -14,7 +14,7 @@ from embeddings import cosine_similarity, embed_text
 from firebase_admin_app import get_firebase_admin_app
 from ingestion import VideoIngestionDeferred, ingest_source
 from knowledge_ai import answer_with_context
-from storage import load_chunks, load_document, load_graph, load_posts, load_sources, upsert_account
+from storage import load_chunks, load_graph, load_posts, load_sources, upsert_account
 
 app = FastAPI(title="Personal Knowledge Base API", version="0.1.0")
 
@@ -234,9 +234,14 @@ async def _parse_source_request(request: Request) -> dict[str, Any]:
     }
 
 
+_SOURCE_LIST_EXCLUDE = {"content"}
+
+
 @app.get("/sources")
 def get_sources(account: dict[str, str] = Depends(current_account)) -> list[dict[str, Any]]:
-    return _sort_newest(load_sources(account["id"]))
+    sources = load_sources(account["id"])
+    # Strip heavy content field from list responses; use GET /sources/{id} for full detail
+    return _sort_newest([{k: v for k, v in s.items() if k not in _SOURCE_LIST_EXCLUDE} for s in sources])
 
 
 @app.get("/sources/{source_id}")
@@ -247,7 +252,7 @@ def get_source(
     account_id = account["id"]
     for source in load_sources(account_id):
         if source.get("id") == source_id:
-            return {**source, "markdown": load_document(account_id, source_id)}
+            return source
     raise HTTPException(status_code=404, detail="Source not found")
 
 

@@ -14,7 +14,6 @@ class MemoryStorageBackend(StorageBackend):
         self.sources: dict[str, dict[str, Any]] = {}
         self.chunks: dict[str, dict[str, Any]] = {}
         self.posts: dict[str, dict[str, Any]] = {}
-        self.documents: dict[str, dict[str, str]] = {}
         self.graphs: dict[str, dict[str, list[dict[str, Any]]]] = {}
         self.accounts: dict[str, dict[str, str]] = {}
 
@@ -110,7 +109,6 @@ class MemoryStorageBackend(StorageBackend):
         chunks: list[dict[str, Any]],
         post: dict[str, Any],
         concepts: list[str],
-        markdown: str,
     ) -> None:
         with self._lock:
             self.chunks = {
@@ -136,15 +134,3 @@ class MemoryStorageBackend(StorageBackend):
                 source,
                 concepts,
             )
-            self.documents[str(source["id"])] = {"account_id": account_id, "markdown": markdown}
-
-    def save_document(self, account_id: str, source_id: str, markdown: str) -> None:
-        with self._lock:
-            self.documents[str(source_id)] = {"account_id": account_id, "markdown": markdown}
-
-    def load_document(self, account_id: str, source_id: str) -> str:
-        with self._lock:
-            document = self.documents.get(str(source_id))
-            if not document or document.get("account_id") != account_id:
-                return ""
-            return document.get("markdown", "")

@@ -89,38 +89,6 @@ button:disabled,
   box-shadow: 0 -16px 40px hsl(222 47% 11% / 0.08);
 }
 
-.markdown-body {
-  color: hsl(222 47% 11%);
-  line-height: 1.65;
-}
-
-.markdown-body h1 {
-  border-bottom: 1px solid hsl(214 32% 91%);
-  font-size: 1.25rem;
-  font-weight: 800;
-  margin: 1.6rem 0 0.75rem;
-  padding-bottom: 0.5rem;
-}
-
-.markdown-body h2 {
-  font-size: 1rem;
-  font-weight: 800;
-  margin: 1.25rem 0 0.5rem;
-}
-
-.markdown-body p {
-  margin: 0.5rem 0;
-}
-
-.markdown-body ul {
-  list-style: disc;
-  margin: 0.5rem 0 0.75rem 1.25rem;
-}
-
-.markdown-body li {
-  margin: 0.25rem 0;
-}
-
 .graph-canvas {
   min-height: 420px;
   width: 100%;

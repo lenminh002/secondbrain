@@ -1,7 +1,7 @@
 import { BookOpen, Bot, FileText, GitBranch } from "lucide-react";
 
 import { GraphView } from "@/components/GraphView";
-import { MarkdownView } from "@/components/MarkdownView";
+import { SourceContent } from "@/components/SourceContent";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -148,7 +148,7 @@ export function NotesView({
                   </CardHeader>
                   <Separator />
                   <CardContent className="pt-5">
-                    <MarkdownView markdown={selectedSourceDetail.markdown} />
+                    <SourceContent source={selectedSourceDetail} />
                   </CardContent>
                 </Card>
               ) : (

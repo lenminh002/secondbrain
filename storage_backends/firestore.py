@@ -100,7 +100,6 @@ class FirestoreStorageBackend(StorageBackend):
         chunks: list[dict[str, Any]],
         post: dict[str, Any],
         concepts: list[str],
-        markdown: str,
     ) -> None:
         source_id = str(source["id"])
         chunk_query = (
@@ -125,18 +124,3 @@ class FirestoreStorageBackend(StorageBackend):
 
         graph = merge_graph(self.load_graph(account_id), source, concepts)
         self.save_graph(account_id, graph)
-        self.save_document(account_id, source_id, markdown)
-
-    def save_document(self, account_id: str, source_id: str, markdown: str) -> None:
-        self._db.collection("documents").document(str(source_id)).set(
-            {"account_id": account_id, "markdown": markdown}
-        )
-
-    def load_document(self, account_id: str, source_id: str) -> str:
-        snapshot = self._db.collection("documents").document(str(source_id)).get()
-        if not snapshot.exists:
-            return ""
-        data = snapshot.to_dict() or {}
-        if data.get("account_id") != account_id:
-            return ""
-        return str(data.get("markdown") or "")

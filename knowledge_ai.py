@@ -10,7 +10,7 @@ from anthropic import Anthropic
 MODEL_NAME = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
 
-def _strip_markdown_fence(text: str) -> str:
+def _strip_code_fence(text: str) -> str:
     stripped = text.strip()
     fenced = re.match(r"^```(?:json)?\s*(.*?)\s*```$", stripped, flags=re.DOTALL | re.IGNORECASE)
     return fenced.group(1).strip() if fenced else stripped
@@ -84,7 +84,7 @@ Content:
     response_text = "".join(
         block.text for block in message.content if getattr(block, "type", None) == "text"
     )
-    parsed = json.loads(_strip_markdown_fence(response_text))
+    parsed = json.loads(_strip_code_fence(response_text))
     if not isinstance(parsed, dict):
         raise ValueError("Claude enrichment response was not a JSON object.")
     return {

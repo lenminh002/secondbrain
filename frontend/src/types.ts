@@ -20,10 +20,21 @@ export type SourceRecord = {
   status: SourceStatus;
   error: string | null;
   created_at: string;
+  // Enrichment fields (present on list items; always present on SourceDetail)
+  summary?: string;
+  key_ideas?: string[];
+  concepts?: string[];
+  claims?: string[];
+  questions?: string[];
 };
 
 export type SourceDetail = SourceRecord & {
-  markdown: string;
+  content: string;
+  summary: string;
+  key_ideas: string[];
+  concepts: string[];
+  claims: string[];
+  questions: string[];
 };
 
 export type PostRecord = {

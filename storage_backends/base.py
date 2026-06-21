@@ -61,14 +61,5 @@ class StorageBackend(ABC):
         chunks: list[dict[str, Any]],
         post: dict[str, Any],
         concepts: list[str],
-        markdown: str,
     ) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def save_document(self, account_id: str, source_id: str, markdown: str) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def load_document(self, account_id: str, source_id: str) -> str:
         raise NotImplementedError
