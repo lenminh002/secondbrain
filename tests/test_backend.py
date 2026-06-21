@@ -1155,7 +1155,13 @@ def test_note_ingestion_persists_artifacts_to_firestore(monkeypatch) -> None:
     assert len(posts) == 1
     assert posts[0]["account_id"] == TEST_ACCOUNT_ID
     assert posts[0]["source_id"] == source["id"]
-    assert posts[0]["body"] == "Ingestion now persists artifacts to Firestore."
+    expected_body = (
+        "# Summary\nFirestore stores the ingested note.\n\n"
+        "## Key Ideas & Notes\n- Persist source\n- Persist chunks\n\n"
+        "## Key Concepts\n**Firestore**, **Ingestion**\n\n"
+        "---\nIngestion now persists artifacts to Firestore."
+    )
+    assert posts[0]["body"] == expected_body
 
     graph = fake_db.records["graphs"][TEST_ACCOUNT_ID]
     assert graph["account_id"] == TEST_ACCOUNT_ID

@@ -128,12 +128,25 @@ def _replace_source_artifacts(source: dict[str, Any], content: str, enrichment: 
         chunk["embedding_model"] = embedding_model
         chunk["embedding_dim"] = len(embedding)
 
+    body_parts = []
+    if enrichment.get("summary"):
+        body_parts.append(f"# Summary\n{enrichment['summary']}")
+    if enrichment.get("key_ideas"):
+        ideas_list = "\n".join(f"- {idea}" for idea in enrichment["key_ideas"])
+        body_parts.append(f"## Key Ideas & Notes\n{ideas_list}")
+    if enrichment.get("concepts"):
+        concepts_list = ", ".join(f"**{concept}**" for concept in enrichment["concepts"])
+        body_parts.append(f"## Key Concepts\n{concepts_list}")
+    if enrichment.get("social_post"):
+        body_parts.append(f"---\n{enrichment['social_post']}")
+    post_body = "\n\n".join(body_parts)
+
     post = {
         "id": str(uuid.uuid4()),
         "account_id": account_id,
         "source_id": source["id"],
         "source_title": source["title"],
-        "body": enrichment["social_post"],
+        "body": post_body,
         "created_at": now_iso(),
     }
     if source.get("thumbnail_url"):
