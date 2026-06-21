@@ -1,23 +1,18 @@
 from __future__ import annotations
 
 import importlib
-import json
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 
 def _patch_storage(tmp_path: Path, monkeypatch) -> None:
     import storage
 
-    data_dir = tmp_path / "data"
-    monkeypatch.setattr(storage, "DATA_DIR", data_dir)
-    monkeypatch.setattr(storage, "DOCUMENTS_DIR", data_dir / "documents")
-    monkeypatch.setattr(storage, "SOURCES_FILE", data_dir / "sources.json")
-    monkeypatch.setattr(storage, "CHUNKS_FILE", data_dir / "chunks.json")
-    monkeypatch.setattr(storage, "POSTS_FILE", data_dir / "posts.json")
-    monkeypatch.setattr(storage, "GRAPH_FILE", data_dir / "graph.json")
+    monkeypatch.setenv("SKYWATCH_STORAGE_BACKEND", "memory")
+    storage.reset_backend_for_tests()
 
 
 def _client(tmp_path: Path, monkeypatch) -> TestClient:
@@ -378,16 +373,13 @@ def test_chat_skips_chunks_with_incompatible_embedding_dimensions(
     assert [citation["source_title"] for citation in payload["citations"]] == ["Good Dim"]
 
 
-def test_storage_helpers_survive_malformed_json(tmp_path: Path, monkeypatch) -> None:
+def test_firestore_backend_requires_credentials(tmp_path: Path, monkeypatch) -> None:
     import storage
 
-    _patch_storage(tmp_path, monkeypatch)
-    storage.ensure_data_dirs()
-    storage.SOURCES_FILE.write_text("{not json", encoding="utf-8")
-    storage.GRAPH_FILE.write_text("[]", encoding="utf-8")
+    monkeypatch.delenv("SKYWATCH_STORAGE_BACKEND", raising=False)
+    monkeypatch.delenv("FIREBASE_SERVICE_ACCOUNT_FILE", raising=False)
+    monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+    storage.reset_backend_for_tests()
 
-    assert storage.load_sources() == []
-    assert storage.load_graph() == {"nodes": [], "edges": []}
-
-    storage.save_json(storage.SOURCES_FILE, [{"id": "1"}])
-    assert json.loads(storage.SOURCES_FILE.read_text(encoding="utf-8")) == [{"id": "1"}]
+    with pytest.raises(RuntimeError, match="Firebase credentials are required"):
+        storage.load_sources()
