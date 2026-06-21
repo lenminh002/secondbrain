@@ -106,8 +106,9 @@ export function NotesView({
   return (
     <main className="min-h-[calc(100vh-74px)] min-w-0 border-r @container">
       <section className="h-[calc(100vh-74px)] min-w-0 flex flex-col">
-        {/* Desktop header to switch between Vault and AI Chat */}
-        <div className="hidden lg:flex h-14 items-center justify-between border-b px-6 shrink-0 bg-background/50 backdrop-blur">
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+          {/* Desktop header to switch between Vault and AI Chat */}
+          <div className="hidden lg:flex h-14 items-center justify-between border-b px-6 bg-background">
           <h1 className="font-bold">Memories</h1>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -130,8 +131,8 @@ export function NotesView({
           </Tooltip>
         </div>
 
-        {/* Mobile-only header to open the Vault in a drawer */}
-        <div className="flex items-center justify-between border-b px-6 py-3 lg:hidden shrink-0 bg-background/50 backdrop-blur">
+          {/* Mobile-only header to open the Vault in a drawer */}
+          <div className="flex items-center justify-between px-6 py-3 lg:hidden bg-background">
           <div className="flex items-center gap-2 font-bold text-sm">
             <BookOpen className="h-4 w-4 text-primary" />
             Memories
@@ -189,7 +190,7 @@ export function NotesView({
           </Drawer>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+
           <div className="mx-auto max-w-4xl p-5">
             {notice && <div className="mb-4 rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive break-words">{notice}</div>}
             {notesMode === "graph" ? (
