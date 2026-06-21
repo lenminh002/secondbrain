@@ -25,12 +25,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loginWithGoogle = async () => {
-    setLoading(true);
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error("Google Sign-In Error:", error);
-      setLoading(false);
       throw error;
     }
   };

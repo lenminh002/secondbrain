@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Bot, FileText, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import { BookOpen, FileText, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { GraphView } from "@/components/GraphView";
 import { SourceContent } from "@/components/SourceContent";
@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { updateSourceContent } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { errorMessage, formatDate } from "@/lib/format";
@@ -94,36 +93,8 @@ export function NotesView({
 
   return (
     <main className="min-h-[calc(100vh-74px)] min-w-0 border-r @container">
-      <div className="flex h-14 items-center justify-between border-b px-5">
-        <div>
-          <h1 className="font-bold">Memories</h1>
-          <p className="text-xs text-muted-foreground">{readyCount} ready sources · {conceptCount} concepts</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Tabs value={notesMode} onValueChange={(value) => setNotesMode(value as NotesMode)}>
-            <TabsList>
-              <TabsTrigger value="note">Note</TabsTrigger>
-              <TabsTrigger value="graph">Graph</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button className="lg:hidden" size="icon" variant="outline">
-                <Bot className="h-4 w-4" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="flex w-[92vw] max-w-none flex-col p-0" side="right">
-              <SheetHeader className="sr-only">
-                <SheetTitle>The Librarian</SheetTitle>
-              </SheetHeader>
-              {chatPanel}
-            </SheetContent>
-          </Sheet>
-        </div>
-      </div>
-
       <div
-        className="grid h-[calc(100vh-128px)] grid-cols-1 @2xl:grid-cols-[var(--vault-width,280px)_minmax(0,1fr)] transition-[grid-template-columns] duration-300"
+        className="grid h-[calc(100vh-74px)] grid-cols-1 @2xl:grid-cols-[var(--vault-width,280px)_minmax(0,1fr)] transition-[grid-template-columns] duration-300"
         style={{ "--vault-width": isVaultMinimized ? "48px" : "280px" } as React.CSSProperties}
       >
         <aside className="min-h-0 border-b bg-muted/20 @2xl:border-b-0 @2xl:border-r relative transition-all duration-300">

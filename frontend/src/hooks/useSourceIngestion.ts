@@ -15,6 +15,7 @@ interface UseSourceIngestionProps {
   setActiveView: (view: ActiveView) => void;
   setNotesMode: (mode: NotesMode) => void;
   setNotice: (msg: string) => void;
+  onSuccess?: () => void;
 }
 
 export function useSourceIngestion({
@@ -23,6 +24,7 @@ export function useSourceIngestion({
   setActiveView,
   setNotesMode,
   setNotice,
+  onSuccess,
 }: UseSourceIngestionProps) {
   const [activeType, setActiveType] = useState<SourceType>("note");
   const [title, setTitle] = useState("");
@@ -66,6 +68,7 @@ export function useSourceIngestion({
         setActiveView("notes");
         setNotesMode("note");
         setIngestProgress(null);
+        if (onSuccess) onSuccess();
       }
     } catch (error: unknown) {
       setNotice(errorMessage(error));

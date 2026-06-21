@@ -1,4 +1,4 @@
-import { Bell, BookOpen, Bot, CircleUserRound, GitBranch, Home, Settings, Upload } from "lucide-react";
+import { BookOpen, Bot, GitBranch, Home, Upload } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import type { ActiveView, NotesMode } from "@/types";
@@ -16,8 +16,6 @@ export const sidebarItems: SidebarItem[] = [
   { label: "Memories", icon: BookOpen, view: "notes", mode: "note" },
   { label: "Graph", icon: GitBranch, view: "notes", mode: "graph" },
   { label: "Librarian", icon: Bot, view: "chat" },
-  { label: "Notifications", icon: Bell, disabled: true },
-  { label: "Settings", icon: Settings, disabled: true },
 ];
 
 export type MobileItem = { label: string; icon: LucideIcon; view: ActiveView };

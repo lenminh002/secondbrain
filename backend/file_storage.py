@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from backend.github_storage import upload_pdf_to_github
-from backend.google_drive import upload_pdf_to_drive
+from backend.github_storage import upload_pdf_to_github, upload_markdown_to_github
+from backend.google_drive import upload_pdf_to_drive, upload_markdown_to_drive
 
 
 def storage_provider() -> str:
@@ -21,3 +21,11 @@ def store_original_file(file_bytes: bytes, filename: str | None) -> dict[str, An
     if storage_provider() == "drive":
         return upload_pdf_to_drive(file_bytes, filename)
     return upload_pdf_to_github(file_bytes, filename)
+
+
+def store_original_markdown_file(file_bytes: bytes, filename: str | None) -> dict[str, Any]:
+    """Persist the original markdown file and return neutral file metadata."""
+    if storage_provider() == "drive":
+        return upload_markdown_to_drive(file_bytes, filename)
+    return upload_markdown_to_github(file_bytes, filename)
+

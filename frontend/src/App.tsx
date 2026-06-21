@@ -3,7 +3,7 @@ import { GitBranch } from "lucide-react";
 
 import { MobileNav, SidebarNav, TopBar } from "@/components/navigation";
 import { ChatPanel } from "@/components/ChatPanel";
-import { IngestSourcePage } from "@/components/IngestSourcePage";
+import { IngestSourceDrawer } from "@/components/IngestSourceDrawer";
 import { HomeAside, HomeView } from "@/components/HomeView";
 import { NotesView } from "@/components/NotesView";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,8 @@ export default function App() {
 function AuthenticatedApp() {
   const [activeView, setActiveView] = useState<ActiveView>("home");
   const [notesMode, setNotesMode] = useState<NotesMode>("note");
-  const [isSidebarMinimized, setIsSidebarMinimized] = useState(true);
+  const [isIngestOpen, setIsIngestOpen] = useState(false);
+  const isSidebarMinimized = false;
 
   const {
     account,
@@ -73,6 +74,7 @@ function AuthenticatedApp() {
     setActiveView,
     setNotesMode,
     setNotice,
+    onSuccess: () => setIsIngestOpen(false),
   });
 
   const {
@@ -139,7 +141,7 @@ function AuthenticatedApp() {
             setActiveView={setActiveView}
             setNotesMode={setNotesMode}
             isMinimized={isSidebarMinimized}
-            toggleMinimize={() => setIsSidebarMinimized((v) => !v)}
+            onIngestClick={() => setIsIngestOpen(true)}
           />
 
           {activeView === "home" ? (
@@ -149,21 +151,6 @@ function AuthenticatedApp() {
               posts={accountPosts}
               refresh={refreshWithNotice}
               setActiveView={setActiveView}
-            />
-          ) : activeView === "ingest" ? (
-            <IngestSourcePage
-              activeType={activeType}
-              ingestProgress={ingestProgress}
-              isSubmitting={isSubmitting}
-              noteText={noteText}
-              notice={notice}
-              pdfFile={pdfFile}
-              setActiveType={setActiveType}
-              setNoteText={setNoteText}
-              setPdfFile={setPdfFile}
-              setTitle={setTitle}
-              submitSource={submitSource}
-              title={title}
             />
           ) : activeView === "chat" ? (
             <div className="h-[calc(100vh-74px)]">
@@ -211,7 +198,7 @@ function AuthenticatedApp() {
             </aside>
           ) : null}
         </div>
-        <MobileNav activeView={activeView} setActiveView={setActiveView} />
+        <MobileNav activeView={activeView} setActiveView={setActiveView} onIngestClick={() => setIsIngestOpen(true)} />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -227,6 +214,22 @@ function AuthenticatedApp() {
           </TooltipTrigger>
           <TooltipContent>Graphify</TooltipContent>
         </Tooltip>
+        <IngestSourceDrawer
+          isOpen={isIngestOpen}
+          onOpenChange={setIsIngestOpen}
+          activeType={activeType}
+          ingestProgress={ingestProgress}
+          isSubmitting={isSubmitting}
+          noteText={noteText}
+          notice={notice}
+          pdfFile={pdfFile}
+          setActiveType={setActiveType}
+          setNoteText={setNoteText}
+          setPdfFile={setPdfFile}
+          setTitle={setTitle}
+          submitSource={submitSource}
+          title={title}
+        />
       </div>
     </TooltipProvider>
   );

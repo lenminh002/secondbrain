@@ -52,6 +52,15 @@ def _safe_pdf_name(filename: str | None) -> str:
     return name
 
 
+def _safe_md_name(filename: str | None) -> str:
+    name = (filename or "source.md").strip() or "source.md"
+    name = re.sub(r"[^A-Za-z0-9._-]+", "-", name).strip("-") or "source.md"
+    if not name.lower().endswith(".md"):
+        name = f"{name}.md"
+    return name
+
+
+
 def _put_contents(repo: str, path: str, payload: dict[str, Any], token: str) -> dict[str, Any]:
     """PUT a file to the GitHub Contents API. Isolated so tests can stub the network."""
     headers = {
@@ -104,3 +113,41 @@ def upload_pdf_to_github(file_bytes: bytes, filename: str | None) -> dict[str, A
         "github_repo": repo,
         "github_path": path,
     }
+
+
+def upload_markdown_to_github(file_bytes: bytes, filename: str | None) -> dict[str, Any]:
+    """Store the original Markdown in a GitHub repo and return neutral file metadata.
+
+    Files go to ``{prefix}/{uuid}/{filename}`` so paths never collide. Returns the same
+    neutral shape as the Drive uploader so the rest of the pipeline is provider-agnostic.
+    """
+    if not file_bytes:
+        raise GitHubStorageError("GitHub upload failed: Markdown bytes are empty.")
+
+    repo, branch = _repo(), _branch()
+    display_name = _safe_md_name(filename)
+    path = f"{_prefix()}/{uuid.uuid4().hex}/{display_name}"
+    result = _put_contents(
+        repo,
+        path,
+        {
+            "message": f"Add source Markdown {display_name}",
+            "content": base64.b64encode(file_bytes).decode("ascii"),
+            "branch": branch,
+        },
+        _token(),
+    )
+    content = result.get("content") if isinstance(result.get("content"), dict) else {}
+    raw_url = f"https://raw.githubusercontent.com/{repo}/{branch}/{path}"
+    return {
+        "provider": "github",
+        "file_id": content.get("sha") or path,
+        "web_view_link": content.get("html_url") or f"https://github.com/{repo}/blob/{branch}/{path}",
+        "web_content_link": raw_url,
+        "filename": display_name,
+        "mime_type": "text/markdown",
+        "size_bytes": len(file_bytes),
+        "github_repo": repo,
+        "github_path": path,
+    }
+

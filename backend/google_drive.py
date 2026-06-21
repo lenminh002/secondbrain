@@ -123,3 +123,51 @@ def upload_pdf_to_drive(file_bytes: bytes, filename: str | None) -> dict[str, An
         "mime_type": created_file.get("mimeType") or PDF_MIME_TYPE,
         "size_bytes": len(file_bytes),
     }
+
+
+def upload_markdown_to_drive(file_bytes: bytes, filename: str | None) -> dict[str, Any]:
+    if not file_bytes:
+        raise GoogleDriveUploadError("Google Drive upload failed: Markdown bytes are empty.")
+
+    display_name = (filename or "source.md").strip() or "source.md"
+    if not display_name.lower().endswith(".md"):
+        display_name = f"{display_name}.md"
+
+    try:
+        from googleapiclient.http import MediaIoBaseUpload
+
+        service = _build_drive_service()
+        media = MediaIoBaseUpload(
+            io.BytesIO(file_bytes),
+            mimetype="text/markdown",
+            resumable=True,
+        )
+        created_file = (
+            service.files()
+            .create(
+                body={
+                    "name": display_name,
+                    "mimeType": "text/markdown",
+                    "parents": [_drive_folder_id()],
+                },
+                media_body=media,
+                fields="id,name,mimeType,webViewLink,webContentLink",
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+    except GoogleDriveUploadError:
+        raise
+    except Exception as exc:
+        raise GoogleDriveUploadError(f"Google Drive upload failed: {exc}") from exc
+
+    return {
+        "provider": "google_drive",
+        "file_id": created_file.get("id"),
+        "web_view_link": created_file.get("webViewLink"),
+        "web_content_link": created_file.get("webContentLink"),
+        "filename": created_file.get("name") or display_name,
+        "mime_type": created_file.get("mimeType") or "text/markdown",
+        "size_bytes": len(file_bytes),
+    }
+

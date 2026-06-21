@@ -58,7 +58,7 @@ export function IngestSourcePage({
         <Badge variant="secondary">AI pipeline</Badge>
       </div>
       <ScrollArea className="h-[calc(100vh-128px)]">
-        <div className="mx-auto grid max-w-3xl gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="mx-auto grid max-w-3xl gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_280px] pb-2">
           <Card className="overflow-hidden rounded-lg shadow-none">
             <CardHeader className="border-b bg-background">
               <CardTitle className="flex items-center gap-2 text-xl">
@@ -139,34 +139,6 @@ export function IngestSourcePage({
               </form>
             </CardContent>
           </Card>
-
-          <div className="space-y-5">
-            <Card className="rounded-lg shadow-none">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <CheckCircle2 className="h-4 w-4" />
-                  What happens next
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>1. Extract readable content from the source.</p>
-                <p>2. Normalize it into structured memory fields.</p>
-                <p>3. Generate summary, concepts, claims, and a social post.</p>
-                <p>4. Add chunks to retrieval and concepts to the graph.</p>
-              </CardContent>
-            </Card>
-            <Card className="rounded-lg shadow-none">
-              <CardHeader>
-                <CardTitle className="text-base">Output surfaces</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Memories vault</Badge>
-                <Badge variant="secondary">Home feed</Badge>
-                <Badge variant="secondary">Graph</Badge>
-                <Badge variant="secondary">Chat context</Badge>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </ScrollArea>
     </main>

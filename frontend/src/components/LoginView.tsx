@@ -5,6 +5,24 @@ interface LoginViewProps {
   onLogin: () => Promise<void>;
 }
 
+function googleSignInErrorMessage(error: unknown) {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = String((error as { code?: unknown }).code);
+    if (code === "auth/popup-blocked") {
+      return "Your browser blocked the Google sign-in popup. Allow popups for this site and try again.";
+    }
+    if (code === "auth/unauthorized-domain") {
+      return "This local URL is not authorized in Firebase Authentication. Use localhost or add this domain in Firebase.";
+    }
+    if (code === "auth/popup-closed-by-user") {
+      return "Google sign-in was closed before it completed.";
+    }
+    return `Google sign-in failed: ${code}`;
+  }
+
+  return "Failed to sign in with Google. Please try again.";
+}
+
 export function LoginView({ onLogin }: LoginViewProps) {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +34,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
       await onLogin();
     } catch (err: unknown) {
       console.error(err);
-      setError("Failed to sign in with Google. Please try again.");
+      setError(googleSignInErrorMessage(err));
       setIsLoggingIn(false);
     }
   };

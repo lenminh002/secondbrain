@@ -9,4 +9,7 @@ export default defineConfig({
       "@": "/src",
     },
   },
+  server: {
+    allowedHosts: ["second-brain.loca.lt"],
+  },
 });

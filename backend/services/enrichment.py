@@ -122,3 +122,36 @@ Content:
         "social_post": str(parsed.get("social_post", "")).strip() or fallback["social_post"],
         "tags": _as_string_list(parsed.get("tags"), limit=4),
     }
+
+
+def scrape_html_to_markdown(url: str, html_content: str) -> str:
+    client = _client()
+    if client is None:
+        return f"# Scraped Content from {url}\n\n{html_content[:2000]}"
+
+    prompt = f"""
+You are turning a scraped web page into a clean Markdown document for a personal knowledge base.
+
+URL: {url}
+
+Return ONLY the clean Markdown content representing the page.
+Guidelines:
+- Extract the core page/tweet body, title, author, date/timestamp, and any replies/metrics if it's a social post.
+- Omit boilerplate, sidebars, navigation panels, advertisements, headers, and footers.
+- Do NOT wrap your output in code blocks (like ```markdown) or write any meta-talk/preface/afterword. Start directly with the document title or content.
+
+Scraped Content:
+{html_content[:40000]}
+""".strip()
+
+    try:
+        message = client.messages.create(
+            model=MODEL_NAME,
+            max_tokens=4000,
+            temperature=0.1,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return _text_from_content(message.content)
+    except Exception as exc:
+        return f"# Scraped Content from {url}\n\nError processing with Claude: {exc}\n\nRaw text snippet:\n\n{html_content[:1500]}"
+

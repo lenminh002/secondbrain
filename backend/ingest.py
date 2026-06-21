@@ -9,7 +9,7 @@ from backend.ingestion import ingest_source
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest a source into the knowledge base.")
-    parser.add_argument("type", choices=["note", "pdf"])
+    parser.add_argument("type", choices=["note", "pdf", "link"])
     parser.add_argument("--title", default=None)
     parser.add_argument("--text", default=None)
     parser.add_argument("--url", default=None)

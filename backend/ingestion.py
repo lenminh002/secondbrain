@@ -6,8 +6,9 @@ from typing import Any, Literal
 
 from backend.embeddings import current_embedding_model, embed_texts
 from backend.extractors import extract_pdf_text
-from backend.file_storage import store_original_file
+from backend.file_storage import store_original_file, store_original_markdown_file
 from backend.services.enrichment import enrich_content
+
 from backend.storage import (
     append_source,
     commit_source_artifacts,
@@ -15,12 +16,12 @@ from backend.storage import (
     save_source_result,
 )
 
-SOURCE_TYPES = {"note", "pdf"}
+SOURCE_TYPES = {"note", "pdf", "link"}
 INGEST_PROGRESS: dict[str, tuple[str, int]] = {
     "validating": ("Validating source", 5),
-    "uploading": ("Uploading original PDF", 15),
+    "uploading": ("Uploading source file", 15),
     "reading_text": ("Reading note text", 20),
-    "extracting": ("Extracting PDF text", 25),
+    "extracting": ("Extracting source text", 25),
     "enriching": ("Generating structured memory", 45),
     "embedding": ("Creating retrieval chunks", 70),
     "graphing": ("Updating knowledge graph", 90),
@@ -41,6 +42,10 @@ ProgressStage = Literal[
 
 def upload_pdf_to_drive(file_bytes: bytes, filename: str | None) -> dict[str, Any]:
     return store_original_file(file_bytes, filename)
+
+
+def upload_markdown_to_drive(file_bytes: bytes, filename: str | None) -> dict[str, Any]:
+    return store_original_markdown_file(file_bytes, filename)
 
 
 def _enrich_content(
@@ -172,11 +177,14 @@ def validate_source_input(
     file_bytes: bytes | None = None,
 ) -> None:
     if source_type not in SOURCE_TYPES:
-        raise ValueError("Source type must be note or pdf.")
+        raise ValueError("Source type must be note, pdf, or link.")
     if source_type == "note" and not (text or "").strip():
         raise ValueError("Note text is required.")
     if source_type == "pdf" and not file_bytes:
         raise ValueError("PDF upload is required.")
+    if source_type == "link" and not (source_url or "").strip():
+        raise ValueError("Source URL is required for link type.")
+
 
 
 def create_processing_source(
@@ -226,6 +234,33 @@ def process_source(
         if source_type == "note":
             _set_progress(source, "reading_text")
             content = (text or "").strip()
+        elif source_type == "link":
+            _set_progress(source, "uploading")
+            url_to_scrape = source_url or source.get("source_url") or ""
+            if not url_to_scrape:
+                raise ValueError("Source URL is required for link type.")
+
+            from backend.extractors import scrape_url_to_html
+            from backend.services.enrichment import scrape_html_to_markdown
+
+            html_content = scrape_url_to_html(url_to_scrape)
+            markdown_content = scrape_html_to_markdown(url_to_scrape, html_content)
+
+            domain = ""
+            if "://" in url_to_scrape:
+                domain = url_to_scrape.split("://")[1].split("/")[0]
+            md_filename = f"scraped-{domain or 'site'}-{uuid.uuid4().hex[:8]}.md"
+
+            metadata = upload_markdown_to_drive(markdown_content.encode("utf-8"), md_filename)
+            _attach_original_file_metadata(source, metadata)
+
+            content = markdown_content
+
+            first_line = markdown_content.strip().split("\n")[0]
+            if first_line.startswith("# ") and source["title"] in {"Untitled source", md_filename, url_to_scrape}:
+                source["title"] = first_line.lstrip("# ").strip()
+
+            _set_progress(source, "extracting")
         else:
             pdf_bytes = file_bytes or b""
             _set_progress(source, "uploading")

@@ -1,4 +1,4 @@
-import { Menu, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -14,7 +14,7 @@ export type NavProps = {
   setActiveView: (view: ActiveView) => void;
   setNotesMode: (mode: NotesMode) => void;
   isMinimized: boolean;
-  toggleMinimize: () => void;
+  onIngestClick: () => void;
 };
 
 export function SidebarNav({
@@ -23,7 +23,7 @@ export function SidebarNav({
   setActiveView,
   setNotesMode,
   isMinimized,
-  toggleMinimize,
+  onIngestClick,
 }: NavProps) {
   const ingestButton = (
     <Button
@@ -31,7 +31,7 @@ export function SidebarNav({
         "w-full transition-all duration-300",
         isMinimized ? "justify-center px-0 h-10 w-10 mx-auto rounded-full" : "gap-2"
       )}
-      onClick={() => setActiveView("ingest")}
+      onClick={onIngestClick}
       size={isMinimized ? "icon" : "default"}
     >
       <Upload className="h-4 w-4 shrink-0" />
@@ -46,24 +46,6 @@ export function SidebarNav({
         isMinimized ? "px-3" : "px-5"
       )}
     >
-      <div className={cn("mb-6 flex items-center", isMinimized ? "justify-center" : "justify-start")}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              className="h-10 w-10 rounded-md text-muted-foreground hover:text-foreground shrink-0"
-              onClick={toggleMinimize}
-              size="icon"
-              variant="ghost"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            {isMinimized ? "Expand menu" : "Collapse menu"}
-          </TooltipContent>
-        </Tooltip>
-      </div>
-
       <nav className="space-y-1 flex-grow flex flex-col items-stretch">
         {sidebarItems.map((item) => {
           const active = !item.disabled &&
@@ -88,17 +70,16 @@ export function SidebarNav({
           );
         })}
       </nav>
-
-      <div className="pt-4 border-t">
-        {isMinimized ? (
-          <Tooltip>
-            <TooltipTrigger asChild>{ingestButton}</TooltipTrigger>
-            <TooltipContent side="right">Ingest Source</TooltipContent>
-          </Tooltip>
-        ) : (
-          ingestButton
-        )}
-      </div>
+        <div className="pt-4">
+          {isMinimized ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{ingestButton}</TooltipTrigger>
+              <TooltipContent side="right">Ingest Source</TooltipContent>
+            </Tooltip>
+          ) : (
+            ingestButton
+          )}
+        </div>
     </aside>
   );
 }

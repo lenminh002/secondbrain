@@ -1160,3 +1160,58 @@ def test_note_ingestion_persists_artifacts_to_firestore(monkeypatch) -> None:
     graph = fake_db.records["graphs"][TEST_ACCOUNT_ID]
     assert graph["account_id"] == TEST_ACCOUNT_ID
     assert {"source": f"source-{source['id']}", "target": "concept-firestore", "relation": "mentions"} in graph["edges"]
+
+
+def test_link_ingestion_scrapes_and_processes(tmp_path: Path, monkeypatch) -> None:
+    _patch_storage(tmp_path, monkeypatch)
+
+    # Mock scraping and markdown conversion
+    monkeypatch.setattr("backend.extractors.scrape_url_to_html", lambda url: "<html>Mock Tweet HTML</html>")
+    monkeypatch.setattr(
+        "backend.services.enrichment.scrape_html_to_markdown",
+        lambda url, html: "# Mock Tweet\n\nThis is a mock tweet about AI scaling."
+    )
+    # Mock file upload
+    monkeypatch.setattr(
+        "backend.ingestion.upload_markdown_to_drive",
+        lambda file_bytes, filename: {
+            "provider": "google_drive",
+            "file_id": "drive-md-file-1",
+            "web_view_link": "https://drive.google.com/file/d/drive-md-file-1/view",
+            "web_content_link": "https://drive.google.com/uc?id=drive-md-file-1",
+            "filename": filename,
+            "mime_type": "text/markdown",
+            "size_bytes": len(file_bytes),
+        }
+    )
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    from backend import api
+    importlib.reload(api)
+    client = TestClient(api.app)
+
+    response = client.post(
+        "/sources",
+        json={
+            "type": "link",
+            "title": "Untitled source",
+            "source_url": "https://x.com/heynavtoor/status/2067194761446920264",
+        },
+    )
+
+    assert response.status_code == 200
+    source = response.json()
+    assert source["id"]
+    assert source["status"] == "processing"
+
+    detail = client.get(f"/sources/{source['id']}").json()
+    assert detail["status"] == "ready"
+    assert detail["progress_stage"] == "complete"
+    assert detail["title"] == "Mock Tweet"
+    assert "Mock Tweet" in detail["content"]
+    assert "AI scaling" in detail["content"]
+    assert detail["source_url"] == "https://drive.google.com/file/d/drive-md-file-1/view"
+    assert detail["metadata"]["original_file"]["file_id"] == "drive-md-file-1"
+

@@ -32,7 +32,7 @@ export function NavItem({ label, icon: Icon, isMinimized, active, disabled, onCl
       className={cn(
         "transition-all duration-300",
         isMinimized ? "h-10 w-10 mx-auto justify-center" : "w-full justify-start gap-3 text-base",
-        active ? "text-foreground" : "text-muted-foreground"
+        active ? "text-foreground" : "text-muted-foreground hover:!bg-muted hover:!text-foreground"
       )}
       onClick={onClick}
       variant={active ? "secondary" : "ghost"}

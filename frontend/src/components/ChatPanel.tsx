@@ -1,7 +1,7 @@
 import { FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Archive, Bot, GitBranch, Loader2, MessageCircle, ChevronRight, ChevronLeft } from "lucide-react";
+import { Trash2, Bot, GitBranch, Loader2, MessageCircle, ChevronRight, ChevronLeft } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ export function ChatPanel({
 
   if (isMinimized) {
     return (
-      <Card className="flex h-full min-h-0 flex-col rounded-none border-0 border-l shadow-none lg:rounded-none bg-muted/20 items-center py-4">
+      <Card className="flex h-full min-h-0 flex-col rounded-none border-0 shadow-none lg:rounded-none bg-muted/20 items-center py-4">
         {toggleMinimize && (
           <Button variant="ghost" size="icon" onClick={toggleMinimize} className="mb-4">
             <ChevronLeft className="h-5 w-5" />
@@ -52,7 +52,7 @@ export function ChatPanel({
   }
 
   return (
-    <Card className="flex h-full min-h-0 flex-col rounded-none border-0 border-l shadow-none lg:rounded-none relative">
+    <Card className="flex h-full min-h-0 flex-col rounded-none border-0 shadow-none lg:rounded-none relative">
       <CardHeader className={cn("border-b", toggleMinimize && "pr-14")}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -64,14 +64,15 @@ export function ChatPanel({
           </div>
           {archiveChatHistory && (
             <Button
-              className="h-8 shrink-0 px-2 text-xs"
+              className="h-8 w-8 shrink-0"
               disabled={!hasCompletedMessages || isChatting || isArchivingChat}
               onClick={archiveChatHistory}
               type="button"
               variant="outline"
+              size="icon"
+              title="Archive & Clear"
             >
-              {isArchivingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
-              {isArchivingChat ? "Archiving..." : "Archive & Clear"}
+              {isArchivingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             </Button>
           )}
           {!archiveChatHistory && clearChatHistory && (
