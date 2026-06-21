@@ -143,12 +143,12 @@ def test_pdf_ingestion_uses_extractor(tmp_path: Path, monkeypatch) -> None:
     _patch_storage(tmp_path, monkeypatch)
     monkeypatch.setattr("ingestion.extract_pdf_text", lambda _: "A paper about graph retrieval.")
     monkeypatch.setattr(
-        "ingestion.upload_pdf_to_drive",
+        "ingestion.store_original_file",
         lambda file_bytes, filename: {
-            "provider": "google_drive",
-            "drive_file_id": "drive-file-1",
-            "drive_web_view_link": "https://drive.google.com/file/d/drive-file-1/view",
-            "drive_web_content_link": "https://drive.google.com/uc?id=drive-file-1",
+            "provider": "github",
+            "file_id": "abc123sha",
+            "web_view_link": "https://github.com/acme/uploads/blob/main/uploads/x/paper.pdf",
+            "web_content_link": "https://raw.githubusercontent.com/acme/uploads/main/uploads/x/paper.pdf",
             "filename": filename,
             "mime_type": "application/pdf",
             "size_bytes": len(file_bytes),
@@ -174,19 +174,19 @@ def test_pdf_ingestion_uses_extractor(tmp_path: Path, monkeypatch) -> None:
     assert detail["status"] == "ready"
     assert detail["progress_percent"] == 100
     assert "graph retrieval" in detail["content"]
-    assert detail["source_url"] == "https://drive.google.com/file/d/drive-file-1/view"
+    assert detail["source_url"] == "https://github.com/acme/uploads/blob/main/uploads/x/paper.pdf"
     assert detail["metadata"]["original_file"] == {
-        "provider": "google_drive",
-        "drive_file_id": "drive-file-1",
-        "drive_web_view_link": "https://drive.google.com/file/d/drive-file-1/view",
-        "drive_web_content_link": "https://drive.google.com/uc?id=drive-file-1",
+        "provider": "github",
+        "file_id": "abc123sha",
+        "web_view_link": "https://github.com/acme/uploads/blob/main/uploads/x/paper.pdf",
+        "web_content_link": "https://raw.githubusercontent.com/acme/uploads/main/uploads/x/paper.pdf",
         "filename": "paper.pdf",
         "mime_type": "application/pdf",
         "size_bytes": len(b"%PDF-1.4 fake"),
     }
 
 
-def test_pdf_drive_upload_failure_records_failed_source_without_artifacts(
+def test_pdf_upload_failure_records_failed_source_without_artifacts(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -195,12 +195,12 @@ def test_pdf_drive_upload_failure_records_failed_source_without_artifacts(
     _patch_storage(tmp_path, monkeypatch)
 
     def fail_upload(*_: object) -> dict:
-        raise RuntimeError("Google Drive upload failed: folder is not shared")
+        raise RuntimeError("GitHub upload failed: 403 forbidden")
 
     def fail_extract(*_: object) -> str:
-        raise AssertionError("PDF extraction should not run if Drive upload fails.")
+        raise AssertionError("PDF extraction should not run if the upload fails.")
 
-    monkeypatch.setattr("ingestion.upload_pdf_to_drive", fail_upload)
+    monkeypatch.setattr("ingestion.store_original_file", fail_upload)
     monkeypatch.setattr("ingestion.extract_pdf_text", fail_extract)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -220,7 +220,7 @@ def test_pdf_drive_upload_failure_records_failed_source_without_artifacts(
     source = response.json()
     detail = client.get(f"/sources/{source['id']}").json()
     assert detail["status"] == "failed"
-    assert "Google Drive upload failed" in detail["error"]
+    assert "GitHub upload failed" in detail["error"]
     assert detail["progress_stage"] == "uploading"
     assert detail["progress_percent"] == 15
     assert storage.load_chunks(TEST_ACCOUNT_ID) == []
@@ -1024,3 +1024,199 @@ def test_agent_run_failure_marks_source_failed(monkeypatch) -> None:
     assert result["status"] == "failed"
     sources = {source["id"]: source for source in storage.load_sources(TEST_ACCOUNT_ID)}
     assert sources["src-bad"]["status"] == "failed"
+
+
+def _rate_limit_error():
+    import httpx
+    from anthropic import RateLimitError
+
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    response = httpx.Response(429, request=request)
+    return RateLimitError("rate limited", response=response, body=None)
+
+
+def test_resilient_anthropic_switches_to_fallback_on_rate_limit() -> None:
+    from knowledge_ai import ResilientAnthropic
+
+    error = _rate_limit_error()
+
+    class _Primary:
+        def __init__(self) -> None:
+            self.messages = self
+            self.calls = 0
+
+        def create(self, **_):
+            self.calls += 1
+            raise error
+
+    class _Fallback:
+        def __init__(self) -> None:
+            self.messages = self
+            self.calls = 0
+
+        def create(self, **_):
+            self.calls += 1
+            return "FALLBACK_OK"
+
+    primary, fallback = _Primary(), _Fallback()
+    client = ResilientAnthropic(primary, fallback)
+
+    assert client.messages.create(model="m", messages=[]) == "FALLBACK_OK"
+    assert fallback.calls == 1
+    # After a limit hit the primary is on cooldown, so the next call skips it.
+    assert client.messages.create(model="m", messages=[]) == "FALLBACK_OK"
+    assert primary.calls == 1
+    assert fallback.calls == 2
+
+
+def test_resilient_anthropic_reraises_when_no_fallback() -> None:
+    import pytest
+    from anthropic import RateLimitError
+
+    from knowledge_ai import ResilientAnthropic
+
+    class _Primary:
+        def __init__(self) -> None:
+            self.messages = self
+
+        def create(self, **_):
+            raise _rate_limit_error()
+
+    client = ResilientAnthropic(_Primary(), None)
+    with pytest.raises(RateLimitError):
+        client.messages.create(model="m", messages=[])
+
+
+def test_resilient_anthropic_switches_on_credit_balance_error() -> None:
+    import httpx
+    from anthropic import BadRequestError
+
+    from knowledge_ai import ResilientAnthropic
+
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    response = httpx.Response(400, request=request)
+    credit_error = BadRequestError(
+        "Your credit balance is too low to access the Anthropic API.",
+        response=response,
+        body=None,
+    )
+
+    class _Primary:
+        def __init__(self) -> None:
+            self.messages = self
+
+        def create(self, **_):
+            raise credit_error
+
+    class _Fallback:
+        def __init__(self) -> None:
+            self.messages = self
+            self.calls = 0
+
+        def create(self, **_):
+            self.calls += 1
+            return "FALLBACK_OK"
+
+    fallback = _Fallback()
+    client = ResilientAnthropic(_Primary(), fallback)
+    # A 400 credit-balance error is a "limit", so it should fail over.
+    assert client.messages.create(model="m", messages=[]) == "FALLBACK_OK"
+    assert fallback.calls == 1
+
+
+def test_resilient_anthropic_reraises_non_limit_errors() -> None:
+    import httpx
+    import pytest
+    from anthropic import BadRequestError
+
+    from knowledge_ai import ResilientAnthropic
+
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    response = httpx.Response(400, request=request)
+    bad_request = BadRequestError("messages: invalid field", response=response, body=None)
+
+    class _Primary:
+        def __init__(self) -> None:
+            self.messages = self
+
+        def create(self, **_):
+            raise bad_request
+
+    class _Fallback:
+        def __init__(self) -> None:
+            self.messages = self
+            self.calls = 0
+
+        def create(self, **_):
+            self.calls += 1
+            return "FALLBACK_OK"
+
+    fallback = _Fallback()
+    client = ResilientAnthropic(_Primary(), fallback)
+    # A genuine bad request is NOT a limit — it must propagate, not fail over.
+    with pytest.raises(BadRequestError):
+        client.messages.create(model="m", messages=[])
+    assert fallback.calls == 0
+
+
+# --- Original-file storage (GitHub default, Drive optional) --------------------
+
+
+def test_github_storage_upload_returns_neutral_metadata(monkeypatch) -> None:
+    import github_storage
+
+    monkeypatch.setenv("GITHUB_TOKEN", "tok")
+    monkeypatch.setenv("GITHUB_STORAGE_REPO", "acme/uploads")
+    monkeypatch.setenv("GITHUB_STORAGE_BRANCH", "main")
+
+    captured: dict = {}
+
+    def fake_put(repo, path, payload, token):
+        captured.update(repo=repo, path=path, payload=payload, token=token)
+        return {"content": {"sha": "deadbeef", "html_url": f"https://github.com/{repo}/blob/main/{path}"}}
+
+    monkeypatch.setattr(github_storage, "_put_contents", fake_put)
+
+    result = github_storage.upload_pdf_to_github(b"%PDF-1.4 fake", "My Paper.pdf")
+
+    assert result["provider"] == "github"
+    assert result["file_id"] == "deadbeef"
+    assert result["mime_type"] == "application/pdf"
+    assert result["size_bytes"] == len(b"%PDF-1.4 fake")
+    assert result["web_content_link"].startswith("https://raw.githubusercontent.com/acme/uploads/main/uploads/")
+    assert result["web_content_link"].endswith("/My-Paper.pdf")
+    # request shape: base64 content, branch, unique path under prefix
+    import base64
+
+    assert base64.b64decode(captured["payload"]["content"]) == b"%PDF-1.4 fake"
+    assert captured["payload"]["branch"] == "main"
+    assert captured["token"] == "tok"
+    assert captured["path"].startswith("uploads/")
+
+
+def test_github_storage_requires_token(monkeypatch) -> None:
+    import pytest
+
+    import github_storage
+
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setenv("GITHUB_STORAGE_REPO", "acme/uploads")
+    with pytest.raises(github_storage.GitHubStorageError):
+        github_storage.upload_pdf_to_github(b"%PDF-1.4 fake", "p.pdf")
+
+
+def test_file_storage_dispatch_selects_provider(monkeypatch) -> None:
+    import file_storage
+
+    monkeypatch.setattr(file_storage, "upload_pdf_to_github", lambda b, fn: {"provider": "github"})
+    monkeypatch.setattr(file_storage, "upload_pdf_to_drive", lambda b, fn: {"provider": "google_drive"})
+
+    monkeypatch.setenv("ORIGINAL_FILE_STORAGE", "github")
+    assert file_storage.store_original_file(b"x", "f.pdf")["provider"] == "github"
+
+    monkeypatch.setenv("ORIGINAL_FILE_STORAGE", "drive")
+    assert file_storage.store_original_file(b"x", "f.pdf")["provider"] == "google_drive"
+
+    # Default (unset) is github.
+    monkeypatch.delenv("ORIGINAL_FILE_STORAGE", raising=False)
+    assert file_storage.store_original_file(b"x", "f.pdf")["provider"] == "github"

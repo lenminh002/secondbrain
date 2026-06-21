@@ -95,6 +95,41 @@ def commit_source_artifacts(
     _backend().commit_source_artifacts(account_id, source, chunks, post, concepts)
 
 
+def delete_source(account_id: str, source_id: str) -> bool:
+    """Remove a source and its derived artifacts (chunks, posts, graph nodes/edges).
+
+    Returns True if a matching source was found and deleted, False otherwise.
+    The save_* backend operations are full-replace, so writing the filtered
+    lists back deletes the removed records on both memory and Firestore.
+    """
+    sid = str(source_id)
+    sources = load_sources(account_id)
+    remaining = [s for s in sources if str(s.get("id")) != sid]
+    if len(remaining) == len(sources):
+        return False
+
+    save_sources(account_id, remaining)
+    save_chunks(account_id, [c for c in load_chunks(account_id) if str(c.get("source_id")) != sid])
+    save_posts(account_id, [p for p in load_posts(account_id) if str(p.get("source_id")) != sid])
+
+    graph = load_graph(account_id)
+    node_id = f"source-{sid}"
+    edges = [
+        edge
+        for edge in graph.get("edges", [])
+        if edge.get("source") != node_id and edge.get("target") != node_id
+    ]
+    referenced = {edge.get("source") for edge in edges} | {edge.get("target") for edge in edges}
+    nodes = [
+        node
+        for node in graph.get("nodes", [])
+        if node.get("id") != node_id
+        and (node.get("type") != "concept" or node.get("id") in referenced)
+    ]
+    save_graph(account_id, {"nodes": nodes, "edges": edges})
+    return True
+
+
 def create_agent_run(run: dict[str, Any]) -> None:
     _backend().create_agent_run(run)
 

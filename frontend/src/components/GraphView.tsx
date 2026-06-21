@@ -291,7 +291,7 @@ export function GraphView({
 
   if (!graph.nodes.length) {
     return (
-      <Card className="grid min-h-[420px] place-items-center border-dashed">
+      <Card className="grid min-h-[420px] place-items-center rounded-lg border-dashed shadow-none">
         <CardContent className="pt-6 text-center">
           <GitBranch className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
           <p className="font-semibold">No graph nodes yet</p>
@@ -302,8 +302,8 @@ export function GraphView({
   }
 
   return (
-    <Card className="overflow-hidden border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-slate-50/70 px-4 py-3">
+    <Card className="overflow-hidden rounded-lg bg-background shadow-none">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-background px-4 py-3">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <span className="h-2.5 w-2.5 rounded-full bg-slate-950" />
@@ -399,7 +399,7 @@ export function GraphView({
           </g>
         </svg>
         {selectedNode && selectedNode.x != null && (
-          <div className="absolute right-4 top-4 w-72 rounded-xl border bg-white/95 p-4 shadow-xl backdrop-blur">
+          <div className="absolute right-4 top-4 w-72 rounded-lg border bg-background/95 p-4 shadow-sm backdrop-blur">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{selectedNode.type}</div>
@@ -413,7 +413,7 @@ export function GraphView({
                 <div className="max-h-44 space-y-1 overflow-auto pr-1">
                   {connectedNodes.map((node) => (
                     <button
-                      className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted"
+                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
                       key={node.id}
                       onClick={() => setSelectedNodeId(node.id)}
                       type="button"

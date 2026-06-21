@@ -116,9 +116,9 @@ def upload_pdf_to_drive(file_bytes: bytes, filename: str | None) -> dict[str, An
 
     return {
         "provider": "google_drive",
-        "drive_file_id": created_file.get("id"),
-        "drive_web_view_link": created_file.get("webViewLink"),
-        "drive_web_content_link": created_file.get("webContentLink"),
+        "file_id": created_file.get("id"),
+        "web_view_link": created_file.get("webViewLink"),
+        "web_content_link": created_file.get("webContentLink"),
         "filename": created_file.get("name") or display_name,
         "mime_type": created_file.get("mimeType") or PDF_MIME_TYPE,
         "size_bytes": len(file_bytes),

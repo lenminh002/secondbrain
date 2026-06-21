@@ -26,9 +26,9 @@ export function ProfileView({
   return (
     <main className="min-h-[calc(100vh-74px)] border-r bg-background">
       <ScrollArea className="h-[calc(100vh-74px)]">
-        <section className="relative">
-          <div className="grid min-h-64 place-items-center rounded-b-lg bg-slate-950 px-6 text-center text-white md:min-h-80">
-            <h1 className="text-5xl font-black tracking-tight md:text-7xl">
+        <section className="relative border-b">
+          <div className="grid min-h-40 place-items-center bg-muted px-6 text-center md:min-h-52">
+            <h1 className="text-3xl font-bold tracking-tight md:text-5xl">
               2026 {account?.name || "Profile"}
             </h1>
           </div>
@@ -43,7 +43,7 @@ export function ProfileView({
             <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-3xl font-black tracking-tight">{account?.name || "Profile"}</h2>
+                  <h2 className="text-2xl font-bold tracking-tight">{account?.name || "Profile"}</h2>
                   <BadgeCheck className="h-5 w-5 text-sky-500" />
                 </div>
                 <div className="mt-1 flex items-center gap-1 text-muted-foreground">
@@ -60,26 +60,26 @@ export function ProfileView({
               </Button>
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-6 text-lg">
+            <div className="mt-6 flex flex-wrap gap-6 text-base">
               <div>
-                <span className="font-black">{posts.length}</span>{" "}
+                <span className="font-bold">{posts.length}</span>{" "}
                 <span className="text-muted-foreground">Posts</span>
               </div>
               <div>
-                <span className="font-black">{readyCount}</span>{" "}
+                <span className="font-bold">{readyCount}</span>{" "}
                 <span className="text-muted-foreground">Sources</span>
               </div>
               <div>
-                <span className="font-black">{conceptCount}</span>{" "}
+                <span className="font-bold">{conceptCount}</span>{" "}
                 <span className="text-muted-foreground">Concepts</span>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-6 px-5 pb-8 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <section className="grid gap-5 px-5 pb-8 pt-5 xl:grid-cols-[280px_minmax(0,1fr)]">
           <aside className="space-y-5">
-            <Card>
+            <Card className="rounded-lg shadow-none">
               <CardHeader>
                 <CardTitle>Details</CardTitle>
               </CardHeader>
@@ -117,7 +117,7 @@ export function ProfileView({
                 {posts.length ? (
                   <div className="space-y-4">
                     {posts.map((post) => (
-                      <Card key={post.id}>
+                      <Card className="rounded-lg shadow-none" key={post.id}>
                         <CardHeader className="flex-row gap-3 space-y-0">
                   <Avatar>
                     {account?.avatar_url && <AvatarImage alt={account.name} src={account.avatar_url} />}
@@ -150,7 +150,7 @@ export function ProfileView({
               <TabsContent className="mt-6" value="tags">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {["KnowledgeGraph", "PersonalAI", "DigestNotes", "ConceptMap"].map((tag) => (
-                    <Card key={tag}>
+                    <Card className="rounded-lg shadow-none" key={tag}>
                       <CardContent className="pt-6 text-lg font-bold">#{tag}</CardContent>
                     </Card>
                   ))}
@@ -174,9 +174,9 @@ function ProfileEmptyState({
   return (
     <div className="grid min-h-[42vh] place-items-center text-center">
       <div>
-        <Bug className="mx-auto mb-6 h-24 w-24 text-primary" />
-        <h3 className="text-4xl font-black tracking-tight">{label}</h3>
-        <p className="mt-3 text-lg text-muted-foreground">Posts will appear here when you digest a source.</p>
+        <Bug className="mx-auto mb-5 h-20 w-20 text-muted-foreground" />
+        <h3 className="text-3xl font-bold tracking-tight">{label}</h3>
+        <p className="mt-2 text-sm text-muted-foreground">Posts will appear here when you digest a source.</p>
         {setActiveView && (
           <Button className="mt-6" onClick={() => setActiveView("digest")}>
             <Upload className="h-4 w-4" />

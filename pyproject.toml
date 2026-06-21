@@ -1,5 +1,5 @@
 [project]
-name = "SecondBrain"
+name = "Second-Brain"
 version = "0.1.0"
 description = "Personal knowledge-base ingestion and assistant prototype."
 readme = "README.md"

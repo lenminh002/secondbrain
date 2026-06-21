@@ -77,7 +77,8 @@ class KnowledgeAgentTools:
             "title": source.get("title", self.source_title),
             "status": source.get("status", "processing"),
             "source_type": source.get("type", "pdf"),
-            "drive_file_id": original.get("drive_file_id"),
+            "storage_provider": original.get("provider"),
+            "file_id": original.get("file_id"),
         }
 
     # --- tool 2 ---------------------------------------------------------

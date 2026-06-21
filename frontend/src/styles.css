@@ -31,7 +31,7 @@
 
 .brand {
   font-family: "Borel", cursive;
-  line-height: 1.4;
+  line-height: 1;
 }
 
 html,
@@ -75,21 +75,21 @@ button:disabled,
 
 .social-grid {
   display: grid;
-  grid-template-columns: var(--sidebar-width, 236px) minmax(0, 680px) minmax(280px, 340px);
+  grid-template-columns: var(--sidebar-width, 236px) minmax(0, var(--main-width, 768px)) minmax(280px, 340px);
   justify-content: center;
   transition: grid-template-columns 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .notes-grid {
   display: grid;
-  grid-template-columns: var(--sidebar-width, 236px) minmax(0, 920px) minmax(300px, 360px);
+  grid-template-columns: var(--sidebar-width, 236px) minmax(0, var(--main-width, 768px));
   justify-content: center;
   transition: grid-template-columns 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .digest-grid {
   display: grid;
-  grid-template-columns: var(--sidebar-width, 236px) minmax(0, 760px);
+  grid-template-columns: var(--sidebar-width, 236px) minmax(0, var(--main-width, 768px));
   justify-content: center;
   transition: grid-template-columns 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }

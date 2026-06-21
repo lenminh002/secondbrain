@@ -1,4 +1,5 @@
 {
+  "name": "second-brain",
   "dependencies": {
     "firebase": "^12.15.0"
   }

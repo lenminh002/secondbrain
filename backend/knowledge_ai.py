@@ -1,15 +1,38 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
+import time
 from collections.abc import Callable
 from typing import Any
 
-from anthropic import Anthropic
+from anthropic import Anthropic, APIStatusError, RateLimitError
+
+logger = logging.getLogger(__name__)
+
+# Substrings that mark a credential/usage limit worth failing over for. Anthropic
+# returns 429 for rate limits but 400 for an exhausted credit balance, so we match
+# on the message too rather than the status code alone.
+_LIMIT_HINTS = ("credit balance", "quota", "billing", "rate limit", "usage limit", "insufficient")
+
+
+def _is_limit_error(exc: Exception) -> bool:
+    if isinstance(exc, RateLimitError):
+        return True
+    if isinstance(exc, APIStatusError):
+        message = str(getattr(exc, "message", "") or exc).lower()
+        return any(hint in message for hint in _LIMIT_HINTS)
+    return False
 
 MODEL_NAME = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 MAX_AGENT_TURNS = 3
+
+# After the primary credential is rate-limited, prefer the fallback for this long
+# before retrying the primary, so an agent run making many calls doesn't keep
+# hammering a limited key.
+_PRIMARY_COOLDOWN_SECONDS = 60
 
 CHAT_TOOLS = [
     {
@@ -39,6 +62,39 @@ CHAT_TOOLS = [
                 }
             },
             "required": ["source_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "create_note",
+        "description": (
+            "Create and save a new note in the user's knowledge base. Use this when the "
+            "user asks to add, create, write, or save a note. The note is saved immediately."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "A short title for the note."},
+                "text": {"type": "string", "description": "The full note body content."},
+            },
+            "required": ["title", "text"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "propose_delete_source",
+        "description": (
+            "Propose deleting a saved source (note or PDF). This does NOT delete anything; "
+            "it asks the user to confirm first. Use when the user asks to delete or remove a "
+            "source. Prefer the source_id from search_knowledge_base; otherwise pass a title."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "source_id": {"type": "string", "description": "The source_id to delete."},
+                "title": {"type": "string", "description": "A title to match if the id is unknown."},
+            },
+            "required": [],
             "additionalProperties": False,
         },
     },
@@ -251,9 +307,57 @@ Graph context:
     return _text_from_content(response.content)
 
 
-def _client() -> Anthropic | None:
+class _ResilientMessages:
+    def __init__(self, owner: "ResilientAnthropic") -> None:
+        self._owner = owner
+
+    def create(self, **kwargs: Any) -> Any:
+        return self._owner._create(**kwargs)
+
+
+class ResilientAnthropic:
+    """Anthropic client that falls back to a backup credential on rate limits.
+
+    ``primary`` uses ``ANTHROPIC_API_KEY``; ``fallback`` uses ``CLAUDE_OAUTH_TOKEN``
+    (Bearer auth). On a ``RateLimitError`` from the primary we switch to the
+    fallback and keep preferring it for a short cooldown. Exposes the same
+    ``.messages.create(...)`` surface as ``anthropic.Anthropic`` so callers and the
+    agent loop need no changes.
+    """
+
+    def __init__(self, primary: Anthropic | None, fallback: Anthropic | None) -> None:
+        self._primary = primary
+        self._fallback = fallback
+        self._primary_blocked_until = 0.0
+        self.messages = _ResilientMessages(self)
+
+    def _create(self, **kwargs: Any) -> Any:
+        use_primary = self._primary is not None and time.monotonic() >= self._primary_blocked_until
+        if use_primary:
+            try:
+                return self._primary.messages.create(**kwargs)
+            except Exception as exc:
+                if self._fallback is None or not _is_limit_error(exc):
+                    raise
+                self._primary_blocked_until = time.monotonic() + _PRIMARY_COOLDOWN_SECONDS
+                logger.warning(
+                    "ANTHROPIC_API_KEY hit a limit (%s); switching to CLAUDE_OAUTH_TOKEN fallback.",
+                    type(exc).__name__,
+                )
+        client = self._fallback if self._fallback is not None else self._primary
+        if client is None:
+            raise ValueError("No Anthropic credential is configured.")
+        return client.messages.create(**kwargs)
+
+
+def _client() -> ResilientAnthropic | None:
     api_key = os.getenv("ANTHROPIC_API_KEY")
-    return Anthropic(api_key=api_key) if api_key else None
+    oauth_token = os.getenv("CLAUDE_OAUTH_TOKEN")
+    primary = Anthropic(api_key=api_key) if api_key else None
+    fallback = Anthropic(auth_token=oauth_token) if oauth_token else None
+    if primary is None and fallback is None:
+        return None
+    return ResilientAnthropic(primary, fallback)
 
 
 def _message_content_to_params(content: Any) -> list[dict[str, Any]]:
@@ -282,10 +386,16 @@ def answer_with_tools(
     messages: list[dict[str, Any]] = [{"role": "user", "content": message}]
     used_tools: list[str] = []
     system = """
-You are a personal assistant that answers only from the user's saved knowledge base.
-You must use tool results as your source of truth. If the saved context is insufficient,
-say what is missing. Cite sources inline with the citation indexes from tool results,
-like [1].
+You are a personal assistant for the user's saved knowledge base. You can answer
+questions, create notes, and propose deletions.
+
+- For questions, answer only from tool results as your source of truth. If the saved
+  context is insufficient, say what is missing. Cite sources inline with the citation
+  indexes from tool results, like [1].
+- When the user asks to add or save a note, call create_note. Confirm what you saved.
+- When the user asks to delete or remove something, call propose_delete_source. This
+  does not delete immediately; the user must confirm in the UI. Tell them you have
+  queued the deletion for confirmation and name the source.
 """.strip()
 
     for turn_index in range(MAX_AGENT_TURNS):

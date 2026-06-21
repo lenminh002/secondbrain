@@ -2,14 +2,14 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { GitBranch } from "lucide-react";
 
 import { MobileNav, SidebarNav, TopBar } from "@/components/AppNavigation";
-import { ChatPanel } from "@/components/ChatPanel";
+import { ChatView } from "@/components/ChatPanel";
 import { DigestSourcePage } from "@/components/DigestSourcePage";
 import { HomeAside, HomeView } from "@/components/HomeView";
 import { NotesView } from "@/components/NotesView";
 import { ProfileView } from "@/components/ProfileView";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { createSource, fetchKnowledgeData, fetchSourceDetail, sendChatMessage } from "@/lib/api";
+import { createSource, deleteSource, fetchKnowledgeData, fetchSourceDetail, sendChatMessage } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import type { AccountRecord, ActiveView, ChatMessage, KnowledgeGraph, NotesMode, PostRecord, SourceDetail, SourceRecord, SourceType } from "@/types";
 
@@ -39,7 +39,6 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
   const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
   const [isChatting, setIsChatting] = useState(false);
-  const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
 
   async function refresh() {
     const data = await fetchKnowledgeData();
@@ -136,13 +135,36 @@ export default function App() {
           citations: payload.citations || [],
           graphContext: payload.graph_context || [],
           toolCalls: payload.tool_calls || [],
+          pendingAction: payload.pending_action || undefined,
         },
       ]);
+      if (payload.tool_calls?.some((call) => call.name === "create_note")) {
+        await refresh();
+      }
     } catch (error: unknown) {
       setChatLog((current) => [...current, { role: "assistant", text: errorMessage(error) }]);
     } finally {
       setIsChatting(false);
     }
+  }
+
+  async function confirmDelete(index: number, sourceId: string) {
+    try {
+      await deleteSource(sourceId);
+      if (selectedSourceId === sourceId) setSelectedSourceId(null);
+      setChatLog((current) => [
+        ...current.map((message, i) => (i === index ? { ...message, resolved: true } : message)),
+        { role: "assistant", text: "Done — the source and its notes, posts, and graph entries were deleted." },
+      ]);
+      await refresh();
+    } catch (error: unknown) {
+      setChatLog((current) => [...current, { role: "assistant", text: errorMessage(error) }]);
+    }
+  }
+
+  function cancelDelete(index: number) {
+    setChatLog((current) => current.map((message, i) => (i === index ? { ...message, resolved: true } : message)));
+    setChatLog((current) => [...current, { role: "assistant", text: "Cancelled. Nothing was deleted." }]);
   }
 
   const sourcesByType = useMemo(() => {
@@ -159,9 +181,6 @@ export default function App() {
   const accountPosts = useMemo(() => {
     return account ? posts.filter((post) => post.account_id === account.id) : posts;
   }, [account, posts]);
-  const chatPanel = (
-    <ChatPanel chatInput={chatInput} chatLog={chatLog} isChatting={isChatting} setChatInput={setChatInput} submitChat={submitChat} />
-  );
 
   return (
     <TooltipProvider>
@@ -169,9 +188,9 @@ export default function App() {
         <TopBar account={account} />
         <div
             className={activeView === "home" || activeView === "profile" ? "social-grid" : activeView === "digest" ? "digest-grid" : "notes-grid"}
-            style={{ ["--sidebar-width" as string]: isSidebarMinimized ? "72px" : "260px" }}
+            style={{ ["--sidebar-width" as string]: "236px" }}
           >
-          <SidebarNav account={account} activeView={activeView} notesMode={notesMode} setActiveView={setActiveView} setNotesMode={setNotesMode} isMinimized={isSidebarMinimized} toggleMinimize={() => setIsSidebarMinimized((v) => !v)} />
+          <SidebarNav account={account} activeView={activeView} notesMode={notesMode} setActiveView={setActiveView} setNotesMode={setNotesMode} />
 
           {activeView === "home" ? (
             <HomeView account={account} notice={notice} posts={accountPosts} refresh={refreshWithNotice} setActiveView={setActiveView} />
@@ -194,14 +213,21 @@ export default function App() {
               title={title}
               youtubeUrl={youtubeUrl}
             />
+          ) : activeView === "chat" ? (
+            <ChatView
+              chatInput={chatInput}
+              chatLog={chatLog}
+              isChatting={isChatting}
+              onCancelDelete={cancelDelete}
+              onConfirmDelete={confirmDelete}
+              setChatInput={setChatInput}
+              submitChat={submitChat}
+            />
           ) : (
             <NotesView
-              chatPanel={chatPanel}
-              conceptCount={conceptCount}
               graph={graph}
               notesMode={notesMode}
               notice={notice}
-              readyCount={readyCount}
               refreshGraph={refreshWithNotice}
               selectedSourceDetail={selectedSourceDetail}
               selectedSourceId={selectedSourceId}
@@ -213,8 +239,6 @@ export default function App() {
 
           {activeView === "home" || activeView === "profile" ? (
             <HomeAside account={account} setActiveView={setActiveView} setSelectedSourceId={setSelectedSourceId} sources={sources} />
-          ) : activeView === "notes" ? (
-            <aside className="sticky top-[74px] hidden h-[calc(100vh-74px)] lg:block">{chatPanel}</aside>
           ) : null}
         </div>
         <MobileNav activeView={activeView} setActiveView={setActiveView} />

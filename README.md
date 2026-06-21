@@ -1,6 +1,6 @@
-# SecondBrain
+# Second-Brain
 
-SecondBrain is a hackathon MVP for a personal knowledge-base assistant. Add notes or PDFs,
+Second-Brain is a hackathon MVP for a personal knowledge-base assistant. Add notes or PDFs,
 and the app converts them into canonical Markdown, generated posts, graph concepts,
 embeddings, and chat-ready retrieval context.
 
@@ -40,14 +40,32 @@ Run commands from the **repo root**, so relative credential paths like
 
 ## Credentials Setup
 
-For the default mock-data mode (`SECONDBRAIN_STORAGE_BACKEND=memory`) you need no Google
-credentials, and **note** ingestion works fully offline. **PDF** ingestion always uploads the
-original file to Google Drive, so it requires Drive credentials regardless of storage backend.
-Switching to `firestore` additionally requires Firebase credentials.
+For the default mock-data mode (`SECONDBRAIN_STORAGE_BACKEND=memory`) you need no storage
+credentials, and **note** ingestion works fully offline. **PDF** ingestion uploads the original
+file to the configured storage provider (`ORIGINAL_FILE_STORAGE`, default **github**), so it
+needs that provider's credentials. Switching to `firestore` additionally requires Firebase
+credentials.
 
 All key files go in the **repo root** and are gitignored.
 
-### Google Drive (required for PDF uploads)
+### Original PDF storage (GitHub — default)
+
+PDFs are stored in a **public GitHub repo** via the Contents API, and the raw URL is saved on
+the source. This needs no Google Workspace and runs entirely server-side with a token.
+
+1. Create a **public** repo to hold uploads, e.g. `your-name/secondbrain-uploads`.
+2. Get a token with write access — the quickest is `gh auth token`, or create a
+   fine-grained PAT scoped to that repo with **Contents: read & write**.
+3. In `.env` set:
+   - `ORIGINAL_FILE_STORAGE=github`
+   - `GITHUB_TOKEN=<token>`
+   - `GITHUB_STORAGE_REPO=your-name/secondbrain-uploads`
+   - (optional) `GITHUB_STORAGE_BRANCH=main`, `GITHUB_STORAGE_PATH_PREFIX=uploads`
+
+Uploaded files land at `uploads/<uuid>/<filename>.pdf`; since the repo is public the raw link
+is world-readable (fine for demo data).
+
+### Google Drive (optional — `ORIGINAL_FILE_STORAGE=drive`)
 
 The backend uploads each original PDF using a **service account** (scope `drive.file`).
 
@@ -61,13 +79,11 @@ The backend uploads each original PDF using a **service account** (scope `drive.
    `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON`.
 6. Create a Drive folder, copy its ID from the URL (`…/folders/<FOLDER_ID>`), and set
    `GOOGLE_DRIVE_FOLDER_ID`.
-7. **Share that folder with the service account's `client_email`** (Editor). This step is
-   easy to miss — the service account has no Drive of its own and writes into the folder you
-   share with it.
+7. **Share that folder with the service account's `client_email`** (Editor).
 
-> If you hit a *"service accounts do not have storage quota"* error on a personal Google
-> account, point `GOOGLE_DRIVE_FOLDER_ID` at a folder inside a **Shared Drive** (Google
-> Workspace). The upload already passes `supportsAllDrives=True`.
+> A service account on a **personal** My Drive returns *"service accounts do not have storage
+> quota"* — it needs a **Shared Drive** (Google Workspace). This is exactly why GitHub storage
+> is the default.
 
 ### Firebase / Firestore (required when `SECONDBRAIN_STORAGE_BACKEND=firestore`)
 

@@ -24,6 +24,7 @@ from ingestion import (
 from knowledge_ai import answer_with_context, answer_with_tools
 from storage import get_account as storage_get_account
 from storage import (
+    delete_source,
     get_agent_run,
     list_agent_runs_for_source,
     load_chunks,
@@ -71,9 +72,9 @@ app.add_middleware(
 
 MOCK_ACCOUNT = {
     "id": "mock-user",
-    "name": "SecondBrain",
-    "handle": "mock-vault",
-    "initials": "SB",
+    "name": "Jay Saunik",
+    "handle": "coinleft",
+    "initials": "JS",
     "email": "mock@example.com",
     "avatar_url": "",
 }
@@ -280,9 +281,10 @@ def _get_source_detail(account_id: str, source_id: str) -> dict[str, Any]:
 def _chat_response(account_id: str, message: str) -> dict[str, Any]:
     _, citations, graph_context = _search_knowledge_base(account_id, message)
     tool_calls: list[dict[str, str]] = []
+    pending_action: dict[str, Any] | None = None
 
     def execute_tool(tool_name: str, tool_input: dict[str, Any]) -> dict[str, Any]:
-        nonlocal citations, graph_context
+        nonlocal citations, graph_context, pending_action
         if tool_name == "search_knowledge_base":
             query = str(tool_input.get("query") or message).strip() or message
             result, citations, graph_context = _search_knowledge_base(account_id, query)
@@ -292,6 +294,40 @@ def _chat_response(account_id: str, message: str) -> dict[str, Any]:
             if not source_id:
                 raise ValueError("source_id is required.")
             return _get_source_detail(account_id, source_id)
+        if tool_name == "create_note":
+            title = str(tool_input.get("title") or "").strip() or "Untitled note"
+            text = str(tool_input.get("text") or "").strip()
+            if not text:
+                raise ValueError("text is required to create a note.")
+            source = create_processing_source(
+                account_id=account_id, source_type="note", title=title, text=text
+            )
+            process_source(source, text=text)
+            return {"status": "created", "source_id": str(source["id"]), "title": title}
+        if tool_name == "propose_delete_source":
+            sid = str(tool_input.get("source_id") or "").strip()
+            title_hint = str(tool_input.get("title") or "").strip()
+            sources = load_sources(account_id)
+            match = None
+            if sid:
+                match = next((s for s in sources if str(s.get("id")) == sid), None)
+            if match is None and title_hint:
+                match = next(
+                    (s for s in sources if title_hint.lower() in str(s.get("title", "")).lower()),
+                    None,
+                )
+            if match is None:
+                return {"status": "not_found", "message": "No matching source found to delete."}
+            pending_action = {
+                "type": "delete_source",
+                "source_id": str(match["id"]),
+                "title": match.get("title"),
+            }
+            return {
+                "status": "awaiting_confirmation",
+                "source_id": str(match["id"]),
+                "title": match.get("title"),
+            }
         raise ValueError(f"Unknown tool: {tool_name}")
 
     try:
@@ -318,6 +354,7 @@ def _chat_response(account_id: str, message: str) -> dict[str, Any]:
         "citations": citations,
         "graph_context": graph_context,
         "tool_calls": tool_calls,
+        "pending_action": pending_action,
     }
 
 
@@ -368,6 +405,14 @@ def get_source(
         if source.get("id") == source_id:
             return source
     raise HTTPException(status_code=404, detail="Source not found")
+
+
+@app.delete("/sources/{source_id}")
+def delete_source_endpoint(source_id: str) -> dict[str, Any]:
+    account = current_account()
+    if not delete_source(account["id"], source_id):
+        raise HTTPException(status_code=404, detail="Source not found")
+    return {"status": "deleted", "source_id": source_id}
 
 
 @app.post("/sources")

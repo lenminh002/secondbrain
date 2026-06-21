@@ -1,5 +1,5 @@
 import { FormEvent } from "react";
-import { CheckCircle2, Loader2, Sparkles, Upload } from "lucide-react";
+import { CheckCircle2, Loader2, Upload } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,16 +60,13 @@ export function DigestSourcePage({
           <h1 className="font-bold">Digest Source</h1>
           <p className="text-xs text-muted-foreground">Turn notes, papers, and videos into structured memory.</p>
         </div>
-        <Badge variant="secondary">
-          <Sparkles className="mr-1 h-3 w-3" />
-          AI pipeline
-        </Badge>
+        <Badge variant="secondary">AI pipeline</Badge>
       </div>
       <ScrollArea className="h-[calc(100vh-128px)]">
-        <div className="mx-auto grid max-w-5xl gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <Card className="overflow-hidden">
-            <CardHeader className="border-b bg-muted/25">
-              <CardTitle className="flex items-center gap-2 text-2xl">
+        <div className="mx-auto grid max-w-3xl gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <Card className="overflow-hidden rounded-lg shadow-none">
+            <CardHeader className="border-b bg-background">
+              <CardTitle className="flex items-center gap-2 text-xl">
                 <Upload className="h-5 w-5" />
                 Add to your knowledge base
               </CardTitle>
@@ -124,7 +121,7 @@ export function DigestSourcePage({
                 )}
 
                 {ingestProgress && (
-                  <div className="rounded-lg border bg-muted/30 p-4" aria-live="polite">
+                  <div className="rounded-lg border bg-background p-4" aria-live="polite">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-bold">{progressTitle}</p>
@@ -159,7 +156,7 @@ export function DigestSourcePage({
           </Card>
 
           <div className="space-y-5">
-            <Card>
+            <Card className="rounded-lg shadow-none">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <CheckCircle2 className="h-4 w-4" />
@@ -173,7 +170,7 @@ export function DigestSourcePage({
                 <p>4. Add chunks to retrieval and concepts to the graph.</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="rounded-lg shadow-none">
               <CardHeader>
                 <CardTitle className="text-base">Output surfaces</CardTitle>
               </CardHeader>

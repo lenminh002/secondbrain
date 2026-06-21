@@ -7,7 +7,7 @@ from typing import Any, Literal
 from config import get_settings
 from embeddings import current_embedding_model, embed_texts
 from extractors import extract_pdf_text
-from google_drive import upload_pdf_to_drive
+from file_storage import store_original_file
 from knowledge_ai import _client as _anthropic_client
 from knowledge_ai import enrich_content
 from storage import (
@@ -133,7 +133,7 @@ def _attach_original_file_metadata(
         metadata = {}
     metadata["original_file"] = original_file
     source["metadata"] = metadata
-    source["source_url"] = original_file.get("drive_web_view_link")
+    source["source_url"] = original_file.get("web_view_link")
 
 
 def validate_source_input(
@@ -242,7 +242,7 @@ def process_source(
             _set_progress(source, "uploading")
             _attach_original_file_metadata(
                 source,
-                upload_pdf_to_drive(pdf_bytes, filename),
+                store_original_file(pdf_bytes, filename),
             )
             if filename and source["title"] in {"Untitled source", filename}:
                 source["title"] = filename.rsplit(".", 1)[0]

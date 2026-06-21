@@ -21,3 +21,4 @@ refined-clarity-353209-8950cf458ebe.json
 # Local editor / agent tooling
 .claude/
 .cursor/
+.continues-handoff.md

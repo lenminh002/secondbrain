@@ -1,4 +1,4 @@
-import type { AccountRecord, ApiError, Citation, GraphContext, KnowledgeGraph, PostRecord, SourceDetail, SourceRecord, ToolCall } from "@/types";
+import type { AccountRecord, ApiError, Citation, GraphContext, KnowledgeGraph, PendingAction, PostRecord, SourceDetail, SourceRecord, ToolCall } from "@/types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
@@ -61,7 +61,16 @@ export async function sendChatMessage(message: string) {
     citations?: Citation[];
     graph_context?: GraphContext[];
     tool_calls?: ToolCall[];
+    pending_action?: PendingAction | null;
   } & ApiError;
   if (!response.ok) throw new Error(payload.detail || "Chat failed.");
   return payload;
+}
+
+export async function deleteSource(sourceId: string) {
+  const response = await fetch(`${API_BASE_URL}/sources/${sourceId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw await responseError(response, "Failed to delete source.");
+  return (await response.json()) as { status: string; source_id: string };
 }

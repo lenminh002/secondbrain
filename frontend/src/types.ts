@@ -1,6 +1,6 @@
 export type SourceType = "note" | "pdf" | "youtube";
 export type SourceStatus = "processing" | "ready" | "failed";
-export type ActiveView = "home" | "notes" | "digest" | "profile";
+export type ActiveView = "home" | "notes" | "digest" | "profile" | "chat";
 export type NotesMode = "note" | "graph";
 
 export type AccountRecord = {
@@ -130,12 +130,20 @@ export type ToolCall = {
   name: string;
 };
 
+export type PendingAction = {
+  type: "delete_source";
+  source_id: string;
+  title?: string;
+};
+
 export type ChatMessage = {
   role: "user" | "assistant";
   text: string;
   citations?: Citation[];
   graphContext?: GraphContext[];
   toolCalls?: ToolCall[];
+  pendingAction?: PendingAction;
+  resolved?: boolean;
 };
 
 export type ApiError = {
