@@ -52,6 +52,7 @@ VITE_API_BASE_URL="http://localhost:8000" npm run dev
   - video ingestion is currently disabled and to be fixed
 - `GET /sources`
 - `GET /sources/{id}`
+- `GET /account`
 - `GET /posts`
 - `GET /graph`
 - `POST /chat` with `{ "message": "..." }`

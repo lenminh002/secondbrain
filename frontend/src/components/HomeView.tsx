@@ -5,14 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDate } from "@/lib/format";
-import type { ActiveView, PostRecord, SourceRecord } from "@/types";
+import type { AccountRecord, ActiveView, PostRecord, SourceRecord } from "@/types";
 
 export function HomeView({
+  account,
   notice,
   posts,
   refresh,
   setActiveView,
 }: {
+  account: AccountRecord | null;
   notice: string;
   posts: PostRecord[];
   refresh: () => void;
@@ -34,11 +36,14 @@ export function HomeView({
               <Card key={post.id}>
                 <CardHeader className="flex-row gap-3 space-y-0">
                   <Avatar>
-                    <AvatarFallback>{post.source_title.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback>{account?.initials || ""}</AvatarFallback>
                   </Avatar>
                   <div>
                     <CardTitle className="text-base">{post.source_title}</CardTitle>
-                    <CardDescription>{formatDate(post.created_at)} · AI-generated digest</CardDescription>
+                    <CardDescription>
+                      @{post.account_id} ·{" "}
+                      {formatDate(post.created_at)}
+                    </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -66,10 +71,12 @@ export function HomeView({
 }
 
 export function HomeAside({
+  account,
   setActiveView,
   setSelectedSourceId,
   sources,
 }: {
+  account: AccountRecord | null;
   setActiveView: (view: ActiveView) => void;
   setSelectedSourceId: (id: string) => void;
   sources: SourceRecord[];
@@ -110,7 +117,7 @@ export function HomeAside({
           {!sources.length && <p className="text-sm text-muted-foreground">Digest sources to get suggestions.</p>}
         </CardContent>
       </Card>
-      <p className="px-2 text-sm font-medium text-muted-foreground">2026 Second Signal · Personal knowledge feed</p>
+      <p className="px-2 text-sm font-medium text-muted-foreground">2026 {account?.name || "Profile"} · Personal knowledge feed</p>
     </aside>
   );
 }

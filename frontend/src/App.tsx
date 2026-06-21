@@ -6,13 +6,15 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { DigestSourcePage } from "@/components/DigestSourcePage";
 import { HomeAside, HomeView } from "@/components/HomeView";
 import { NotesView } from "@/components/NotesView";
+import { ProfileView } from "@/components/ProfileView";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { createSource, fetchKnowledgeData, fetchSourceDetail, sendChatMessage } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
-import type { ActiveView, ChatMessage, KnowledgeGraph, NotesMode, PostRecord, SourceDetail, SourceRecord, SourceType } from "@/types";
+import type { AccountRecord, ActiveView, ChatMessage, KnowledgeGraph, NotesMode, PostRecord, SourceDetail, SourceRecord, SourceType } from "@/types";
 
 export default function App() {
+  const [account, setAccount] = useState<AccountRecord | null>(null);
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [posts, setPosts] = useState<PostRecord[]>([]);
   const [graph, setGraph] = useState<KnowledgeGraph>({ nodes: [], edges: [] });
@@ -33,6 +35,7 @@ export default function App() {
 
   async function refresh() {
     const data = await fetchKnowledgeData();
+    setAccount(data.account);
     setSources(data.sources);
     setPosts(data.posts);
     setGraph(data.graph);
@@ -123,6 +126,9 @@ export default function App() {
   }, [sources]);
   const readyCount = sources.filter((source) => source.status === "ready").length;
   const conceptCount = graph.nodes.filter((node) => node.type === "concept").length;
+  const accountPosts = useMemo(() => {
+    return account ? posts.filter((post) => post.account_id === account.id) : posts;
+  }, [account, posts]);
   const chatPanel = (
     <ChatPanel chatInput={chatInput} chatLog={chatLog} isChatting={isChatting} setChatInput={setChatInput} submitChat={submitChat} />
   );
@@ -130,12 +136,14 @@ export default function App() {
   return (
     <TooltipProvider>
       <div className="app-frame pb-20 lg:pb-0">
-        <TopBar />
-        <div className={activeView === "home" ? "social-grid" : activeView === "digest" ? "digest-grid" : "notes-grid"}>
-          <SidebarNav activeView={activeView} notesMode={notesMode} setActiveView={setActiveView} setNotesMode={setNotesMode} />
+        <TopBar account={account} />
+        <div className={activeView === "home" || activeView === "profile" ? "social-grid" : activeView === "digest" ? "digest-grid" : "notes-grid"}>
+          <SidebarNav account={account} activeView={activeView} notesMode={notesMode} setActiveView={setActiveView} setNotesMode={setNotesMode} />
 
           {activeView === "home" ? (
-            <HomeView notice={notice} posts={posts} refresh={refreshWithNotice} setActiveView={setActiveView} />
+            <HomeView account={account} notice={notice} posts={accountPosts} refresh={refreshWithNotice} setActiveView={setActiveView} />
+          ) : activeView === "profile" ? (
+            <ProfileView account={account} conceptCount={conceptCount} posts={accountPosts} readyCount={readyCount} setActiveView={setActiveView} sources={sources} />
           ) : activeView === "digest" ? (
             <DigestSourcePage
               activeType={activeType}
@@ -169,8 +177,8 @@ export default function App() {
             />
           )}
 
-          {activeView === "home" ? (
-            <HomeAside setActiveView={setActiveView} setSelectedSourceId={setSelectedSourceId} sources={sources} />
+          {activeView === "home" || activeView === "profile" ? (
+            <HomeAside account={account} setActiveView={setActiveView} setSelectedSourceId={setSelectedSourceId} sources={sources} />
           ) : activeView === "notes" ? (
             <aside className="sticky top-[74px] hidden h-[calc(100vh-74px)] lg:block">{chatPanel}</aside>
           ) : null}

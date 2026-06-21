@@ -11,6 +11,7 @@ from knowledge_ai import enrich_content
 from storage import (
     append_source,
     commit_source_artifacts,
+    get_default_account,
     save_source_result,
 )
 
@@ -117,6 +118,7 @@ def _replace_source_artifacts(source: dict[str, Any], markdown: str, enrichment:
 
     post = {
         "id": str(uuid.uuid4()),
+        "account_id": get_default_account()["id"],
         "source_id": source["id"],
         "source_title": source["title"],
         "body": enrichment["social_post"],

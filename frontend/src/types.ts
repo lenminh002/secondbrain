@@ -1,7 +1,14 @@
 export type SourceType = "note" | "pdf" | "youtube";
 export type SourceStatus = "processing" | "ready" | "failed";
-export type ActiveView = "home" | "notes" | "digest";
+export type ActiveView = "home" | "notes" | "digest" | "profile";
 export type NotesMode = "note" | "graph";
+
+export type AccountRecord = {
+  id: string;
+  name: string;
+  handle: string;
+  initials: string;
+};
 
 export type SourceRecord = {
   id: string;
@@ -19,6 +26,7 @@ export type SourceDetail = SourceRecord & {
 
 export type PostRecord = {
   id: string;
+  account_id: string;
   source_id: string;
   source_title: string;
   body: string;

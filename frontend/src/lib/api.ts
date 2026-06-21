@@ -1,19 +1,21 @@
-import type { ApiError, Citation, KnowledgeGraph, PostRecord, SourceDetail, SourceRecord } from "@/types";
+import type { AccountRecord, ApiError, Citation, KnowledgeGraph, PostRecord, SourceDetail, SourceRecord } from "@/types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export async function fetchKnowledgeData() {
-  const [sourceResponse, postResponse, graphResponse] = await Promise.all([
+  const [accountResponse, sourceResponse, postResponse, graphResponse] = await Promise.all([
+    fetch(`${API_BASE_URL}/account`),
     fetch(`${API_BASE_URL}/sources`),
     fetch(`${API_BASE_URL}/posts`),
     fetch(`${API_BASE_URL}/graph`),
   ]);
 
-  if (!sourceResponse.ok || !postResponse.ok || !graphResponse.ok) {
+  if (!accountResponse.ok || !sourceResponse.ok || !postResponse.ok || !graphResponse.ok) {
     throw new Error("Knowledge API returned an error.");
   }
 
   return {
+    account: (await accountResponse.json()) as AccountRecord,
     sources: (await sourceResponse.json()) as SourceRecord[],
     posts: (await postResponse.json()) as PostRecord[],
     graph: (await graphResponse.json()) as KnowledgeGraph,

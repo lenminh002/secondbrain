@@ -14,26 +14,26 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { ActiveView, NotesMode } from "@/types";
+import type { AccountRecord, ActiveView, NotesMode } from "@/types";
 
-export function Logo() {
+export function Logo({ account }: { account: AccountRecord | null }) {
   return (
     <div className="flex items-center gap-3">
       <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
         <PenLine className="h-5 w-5" />
       </div>
       <div>
-        <div className="text-xl font-black tracking-tight">Second Signal</div>
-        <div className="text-xs text-muted-foreground">@personal-kb</div>
+        <div className="text-xl font-black tracking-tight">{account?.name || "Profile"}</div>
+        <div className="text-xs text-muted-foreground">{account ? `@${account.handle}` : "Loading account"}</div>
       </div>
     </div>
   );
 }
 
-export function TopBar() {
+export function TopBar({ account }: { account: AccountRecord | null }) {
   return (
     <header className="sticky top-0 z-30 flex h-[74px] items-center justify-between border-b bg-background/95 px-5 backdrop-blur">
-      <Logo />
+      <Logo account={account} />
       <div className="hidden w-full max-w-md items-center gap-2 rounded-full border bg-muted/35 px-3 py-2 md:flex">
         <Search className="h-4 w-4 text-muted-foreground" />
         <input className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground" placeholder="Search notes, concepts, posts..." />
@@ -43,7 +43,7 @@ export function TopBar() {
           <Search className="h-5 w-5" />
         </Button>
         <Avatar>
-          <AvatarFallback>SS</AvatarFallback>
+          <AvatarFallback>{account?.initials || ""}</AvatarFallback>
         </Avatar>
       </div>
     </header>
@@ -51,26 +51,28 @@ export function TopBar() {
 }
 
 type NavProps = {
+  account: AccountRecord | null;
   activeView: ActiveView;
   notesMode: NotesMode;
   setActiveView: (view: ActiveView) => void;
   setNotesMode: (mode: NotesMode) => void;
 };
 
-export function SidebarNav({ activeView, notesMode, setActiveView, setNotesMode }: NavProps) {
+export function SidebarNav({ account, activeView, notesMode, setActiveView, setNotesMode }: NavProps) {
   const items = [
     { label: "Home", icon: Home, active: activeView === "home", action: () => setActiveView("home") },
     { label: "Notes", icon: BookOpen, active: activeView === "notes" && notesMode === "note", action: () => { setActiveView("notes"); setNotesMode("note"); } },
     { label: "Graph", icon: GitBranch, active: activeView === "notes" && notesMode === "graph", action: () => { setActiveView("notes"); setNotesMode("graph"); } },
+    { label: "Profile", icon: CircleUserRound, active: activeView === "profile", action: () => setActiveView("profile") },
   ];
 
   return (
     <aside className="sticky top-[74px] hidden h-[calc(100vh-74px)] border-r bg-background px-5 py-7 lg:block">
       <div className="mb-8 flex items-center gap-3">
         <Avatar className="h-14 w-14">
-          <AvatarFallback>SS</AvatarFallback>
+          <AvatarFallback>{account?.initials || ""}</AvatarFallback>
         </Avatar>
-        <div className="text-sm text-muted-foreground">@you</div>
+        <div className="text-sm text-muted-foreground">{account ? `@${account.handle}` : "Loading account"}</div>
       </div>
       <nav className="space-y-1">
         {items.map((item) => (
@@ -87,7 +89,6 @@ export function SidebarNav({ activeView, notesMode, setActiveView, setNotesMode 
         {[
           { label: "Explore", icon: Compass },
           { label: "Notifications", icon: Bell },
-          { label: "Profile", icon: CircleUserRound },
           { label: "Settings", icon: Settings },
         ].map((item) => (
           <Button className="w-full justify-start gap-3 text-base text-muted-foreground" disabled key={item.label} variant="ghost">
@@ -106,7 +107,7 @@ export function SidebarNav({ activeView, notesMode, setActiveView, setNotesMode 
 
 export function MobileNav({ activeView, setActiveView }: Pick<NavProps, "activeView" | "setActiveView">) {
   return (
-    <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 gap-2 border-t bg-background p-3 lg:hidden">
+    <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 gap-2 border-t bg-background p-3 lg:hidden">
       <Button className="h-12 text-base" onClick={() => setActiveView("home")} variant={activeView === "home" ? "default" : "outline"}>
         <Home className="h-5 w-5" />
         Home
@@ -118,6 +119,10 @@ export function MobileNav({ activeView, setActiveView }: Pick<NavProps, "activeV
       <Button className="h-12 text-base" onClick={() => setActiveView("digest")} variant={activeView === "digest" ? "default" : "outline"}>
         <Upload className="h-5 w-5" />
         Digest
+      </Button>
+      <Button className="h-12 text-base" onClick={() => setActiveView("profile")} variant={activeView === "profile" ? "default" : "outline"}>
+        <CircleUserRound className="h-5 w-5" />
+        Profile
       </Button>
     </nav>
   );

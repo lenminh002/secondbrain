@@ -55,7 +55,49 @@ def test_note_ingestion_creates_knowledge_artifacts(tmp_path: Path, monkeypatch)
     assert sources[0]["title"] == "Transformers"
     assert "# Summary" in detail["markdown"]
     assert posts[0]["source_id"] == source["id"]
+    assert posts[0]["account_id"] == "second-signal"
     assert any(node["type"] == "concept" for node in graph["nodes"])
+
+
+def test_account_endpoint_returns_default_account(tmp_path: Path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.get("/account")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": "second-signal",
+        "name": "Second Signal",
+        "handle": "personal-kb",
+        "initials": "SS",
+    }
+
+
+def test_posts_endpoint_normalizes_legacy_posts(tmp_path: Path, monkeypatch) -> None:
+    import storage
+
+    _patch_storage(tmp_path, monkeypatch)
+    storage.save_posts(
+        [
+            {
+                "id": "legacy-post",
+                "source_id": "legacy-source",
+                "source_title": "Legacy Source",
+                "body": "Legacy body",
+                "created_at": "2026-06-20T00:00:00+00:00",
+            }
+        ]
+    )
+
+    import api
+
+    importlib.reload(api)
+    client = TestClient(api.app)
+
+    response = client.get("/posts")
+
+    assert response.status_code == 200
+    assert response.json()[0]["account_id"] == "second-signal"
 
 
 def test_invalid_note_does_not_persist_source(tmp_path: Path, monkeypatch) -> None:

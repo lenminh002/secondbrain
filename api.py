@@ -13,7 +13,7 @@ from starlette.datastructures import UploadFile
 from embeddings import cosine_similarity, embed_text
 from ingestion import VideoIngestionDeferred, ingest_source
 from knowledge_ai import answer_with_context
-from storage import load_chunks, load_document, load_graph, load_posts, load_sources
+from storage import get_default_account, load_chunks, load_document, load_graph, load_posts, load_sources
 
 app = FastAPI(title="Personal Knowledge Base API", version="0.1.0")
 
@@ -223,6 +223,11 @@ async def create_source(request: Request) -> dict[str, Any]:
 @app.get("/posts")
 def get_posts() -> list[dict[str, Any]]:
     return _sort_newest(load_posts())
+
+
+@app.get("/account")
+def get_account() -> dict[str, str]:
+    return get_default_account()
 
 
 @app.get("/graph")

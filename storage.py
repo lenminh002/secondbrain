@@ -15,6 +15,12 @@ SOURCES_FILE = DATA_DIR / "sources.json"
 CHUNKS_FILE = DATA_DIR / "chunks.json"
 POSTS_FILE = DATA_DIR / "posts.json"
 GRAPH_FILE = DATA_DIR / "graph.json"
+DEFAULT_ACCOUNT = {
+    "id": "second-signal",
+    "name": "Second Signal",
+    "handle": "personal-kb",
+    "initials": "SS",
+}
 
 _LOCK = threading.RLock()
 _CACHE: dict[Path, tuple[tuple[int, int], Any]] = {}
@@ -99,9 +105,23 @@ def save_chunks(chunks: list[dict[str, Any]]) -> None:
     save_json(CHUNKS_FILE, chunks)
 
 
+def get_default_account() -> dict[str, str]:
+    return deepcopy(DEFAULT_ACCOUNT)
+
+
+def _post_with_default_account(post: dict[str, Any]) -> dict[str, Any]:
+    return {"account_id": DEFAULT_ACCOUNT["id"], **post}
+
+
 def load_posts() -> list[dict[str, Any]]:
     data = load_json(POSTS_FILE, [])
-    return data if isinstance(data, list) else []
+    if not isinstance(data, list):
+        return []
+    return [
+        _post_with_default_account(post)
+        for post in data
+        if isinstance(post, dict)
+    ]
 
 
 def save_posts(posts: list[dict[str, Any]]) -> None:
