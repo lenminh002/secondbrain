@@ -1,6 +1,6 @@
 import { RefreshCcw, Sparkles, Upload } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -36,12 +36,13 @@ export function HomeView({
               <Card key={post.id}>
                 <CardHeader className="flex-row gap-3 space-y-0">
                   <Avatar>
+                    {account?.avatar_url && <AvatarImage alt={account.name} src={account.avatar_url} />}
                     <AvatarFallback>{account?.initials || ""}</AvatarFallback>
                   </Avatar>
                   <div>
                     <CardTitle className="text-base">{post.source_title}</CardTitle>
                     <CardDescription>
-                      @{post.account_id} ·{" "}
+                      @{account?.handle || post.account_id} ·{" "}
                       {formatDate(post.created_at)}
                     </CardDescription>
                   </div>

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import os
 from copy import deepcopy
 from typing import Any
 
-from storage_backends.base import DEFAULT_ACCOUNT, DEFAULT_GRAPH_ID, StorageBackend
-from storage_backends.utils import coerce_graph, coerce_list, merge_graph, post_with_default_account
+from firebase_admin_app import get_firebase_admin_app
+from storage_backends.base import StorageBackend
+from storage_backends.utils import coerce_graph, coerce_list, merge_graph
 
 
 class FirestoreStorageBackend(StorageBackend):
@@ -13,91 +13,89 @@ class FirestoreStorageBackend(StorageBackend):
         self._db = self._build_client()
 
     def _build_client(self) -> Any:
-        credentials_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_FILE") or os.getenv(
-            "GOOGLE_APPLICATION_CREDENTIALS"
-        )
-        if not credentials_path:
-            raise RuntimeError(
-                "Firebase credentials are required. Set FIREBASE_SERVICE_ACCOUNT_FILE "
-                "or GOOGLE_APPLICATION_CREDENTIALS to a Firebase service account JSON file."
-            )
-
         try:
-            import firebase_admin
-            from firebase_admin import credentials, firestore
+            from firebase_admin import firestore
         except ImportError as exc:
             raise RuntimeError(
                 "firebase-admin is required for Firestore storage. Run `uv sync` first."
             ) from exc
 
-        try:
-            app = firebase_admin.get_app()
-        except ValueError:
-            app = firebase_admin.initialize_app(credentials.Certificate(credentials_path))
+        app = get_firebase_admin_app(require_credentials=True)
         return firestore.client(app)
 
-    def _collection_items(self, name: str) -> list[dict[str, Any]]:
-        return [snapshot.to_dict() or {} for snapshot in self._db.collection(name).stream()]
-
-    def _delete_collection(self, name: str) -> None:
-        for snapshot in self._db.collection(name).stream():
-            snapshot.reference.delete()
+    def _account_query_items(self, name: str, account_id: str) -> list[dict[str, Any]]:
+        query = self._db.collection(name).where("account_id", "==", account_id)
+        return [snapshot.to_dict() or {} for snapshot in query.stream()]
 
     def _delete_query(self, query: Any) -> None:
         for snapshot in query.stream():
             snapshot.reference.delete()
 
-    def get_default_account(self) -> dict[str, str]:
-        account_ref = self._db.collection("accounts").document(DEFAULT_ACCOUNT["id"])
-        snapshot = account_ref.get()
+    def get_account(self, account_id: str) -> dict[str, str] | None:
+        snapshot = self._db.collection("accounts").document(account_id).get()
         if not snapshot.exists:
-            account_ref.set(DEFAULT_ACCOUNT)
-            return deepcopy(DEFAULT_ACCOUNT)
+            return None
         account = snapshot.to_dict() or {}
-        return deepcopy({**DEFAULT_ACCOUNT, **account})
+        return deepcopy(account)
 
-    def load_sources(self) -> list[dict[str, Any]]:
-        return coerce_list(self._collection_items("sources"))
+    def upsert_account(self, account: dict[str, str]) -> dict[str, str]:
+        account_id = str(account["id"])
+        account_ref = self._db.collection("accounts").document(account_id)
+        existing = account_ref.get().to_dict() or {}
+        merged = {**existing, **account}
+        account_ref.set(merged)
+        return deepcopy(merged)
 
-    def save_sources(self, sources: list[dict[str, Any]]) -> None:
-        self._delete_collection("sources")
+    def load_sources(self, account_id: str) -> list[dict[str, Any]]:
+        return coerce_list(self._account_query_items("sources", account_id))
+
+    def save_sources(self, account_id: str, sources: list[dict[str, Any]]) -> None:
+        self._delete_query(self._db.collection("sources").where("account_id", "==", account_id))
         for source in sources:
             if isinstance(source, dict) and source.get("id"):
-                self._db.collection("sources").document(str(source["id"])).set(source)
+                record = {**source, "account_id": account_id}
+                self._db.collection("sources").document(str(record["id"])).set(record)
 
-    def load_chunks(self) -> list[dict[str, Any]]:
-        return coerce_list(self._collection_items("chunks"))
+    def load_chunks(self, account_id: str) -> list[dict[str, Any]]:
+        return coerce_list(self._account_query_items("chunks", account_id))
 
-    def save_chunks(self, chunks: list[dict[str, Any]]) -> None:
-        self._delete_collection("chunks")
+    def save_chunks(self, account_id: str, chunks: list[dict[str, Any]]) -> None:
+        self._delete_query(self._db.collection("chunks").where("account_id", "==", account_id))
         for chunk in chunks:
             if isinstance(chunk, dict) and chunk.get("id"):
-                self._db.collection("chunks").document(str(chunk["id"])).set(chunk)
+                record = {**chunk, "account_id": account_id}
+                self._db.collection("chunks").document(str(record["id"])).set(record)
 
-    def load_posts(self) -> list[dict[str, Any]]:
-        return [post_with_default_account(post) for post in coerce_list(self._collection_items("posts"))]
+    def load_posts(self, account_id: str) -> list[dict[str, Any]]:
+        return coerce_list(self._account_query_items("posts", account_id))
 
-    def save_posts(self, posts: list[dict[str, Any]]) -> None:
-        self._delete_collection("posts")
+    def save_posts(self, account_id: str, posts: list[dict[str, Any]]) -> None:
+        self._delete_query(self._db.collection("posts").where("account_id", "==", account_id))
         for post in posts:
             if isinstance(post, dict) and post.get("id"):
-                self._db.collection("posts").document(str(post["id"])).set(post)
+                record = {**post, "account_id": account_id}
+                self._db.collection("posts").document(str(record["id"])).set(record)
 
-    def load_graph(self) -> dict[str, list[dict[str, Any]]]:
-        snapshot = self._db.collection("graphs").document(DEFAULT_GRAPH_ID).get()
+    def load_graph(self, account_id: str) -> dict[str, list[dict[str, Any]]]:
+        snapshot = self._db.collection("graphs").document(account_id).get()
         return coerce_graph(snapshot.to_dict() if snapshot.exists else {})
 
-    def save_graph(self, graph: dict[str, list[dict[str, Any]]]) -> None:
-        self._db.collection("graphs").document(DEFAULT_GRAPH_ID).set(coerce_graph(graph))
+    def save_graph(self, account_id: str, graph: dict[str, list[dict[str, Any]]]) -> None:
+        self._db.collection("graphs").document(account_id).set(
+            {**coerce_graph(graph), "account_id": account_id}
+        )
 
-    def append_source(self, source: dict[str, Any]) -> None:
-        self._db.collection("sources").document(str(source["id"])).set(source)
+    def append_source(self, account_id: str, source: dict[str, Any]) -> None:
+        record = {**source, "account_id": account_id}
+        self._db.collection("sources").document(str(record["id"])).set(record)
 
-    def save_source_result(self, source: dict[str, Any]) -> None:
-        self._db.collection("sources").document(str(source["id"])).set(source)
+    def save_source_result(self, account_id: str, source: dict[str, Any]) -> None:
+        record = {**source, "account_id": account_id}
+        self._db.collection("sources").document(str(record["id"])).set(record)
 
     def commit_source_artifacts(
         self,
+        account_id: str,
         source: dict[str, Any],
         chunks: list[dict[str, Any]],
         post: dict[str, Any],
@@ -105,25 +103,40 @@ class FirestoreStorageBackend(StorageBackend):
         markdown: str,
     ) -> None:
         source_id = str(source["id"])
-        chunk_query = self._db.collection("chunks").where("source_id", "==", source_id)
+        chunk_query = (
+            self._db.collection("chunks")
+            .where("account_id", "==", account_id)
+            .where("source_id", "==", source_id)
+        )
         self._delete_query(chunk_query)
         for chunk in chunks:
-            self._db.collection("chunks").document(str(chunk["id"])).set(chunk)
+            record = {**chunk, "account_id": account_id}
+            self._db.collection("chunks").document(str(record["id"])).set(record)
 
-        post_query = self._db.collection("posts").where("source_id", "==", source_id)
+        post_query = (
+            self._db.collection("posts")
+            .where("account_id", "==", account_id)
+            .where("source_id", "==", source_id)
+        )
         self._delete_query(post_query)
-        self._db.collection("posts").document(str(post["id"])).set(post)
+        self._db.collection("posts").document(str(post["id"])).set(
+            {**post, "account_id": account_id}
+        )
 
-        graph = merge_graph(self.load_graph(), source, concepts)
-        self.save_graph(graph)
-        self.save_document(source_id, markdown)
+        graph = merge_graph(self.load_graph(account_id), source, concepts)
+        self.save_graph(account_id, graph)
+        self.save_document(account_id, source_id, markdown)
 
-    def save_document(self, source_id: str, markdown: str) -> None:
-        self._db.collection("documents").document(str(source_id)).set({"markdown": markdown})
+    def save_document(self, account_id: str, source_id: str, markdown: str) -> None:
+        self._db.collection("documents").document(str(source_id)).set(
+            {"account_id": account_id, "markdown": markdown}
+        )
 
-    def load_document(self, source_id: str) -> str:
+    def load_document(self, account_id: str, source_id: str) -> str:
         snapshot = self._db.collection("documents").document(str(source_id)).get()
         if not snapshot.exists:
             return ""
         data = snapshot.to_dict() or {}
+        if data.get("account_id") != account_id:
+            return ""
         return str(data.get("markdown") or "")

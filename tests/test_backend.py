@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import importlib
+import sys
+import types
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+
+TEST_ACCOUNT_ID = "google-user-1"
+AUTH_HEADERS = {"Authorization": "Bearer test-token"}
 
 
 def _patch_storage(tmp_path: Path, monkeypatch) -> None:
@@ -13,6 +18,19 @@ def _patch_storage(tmp_path: Path, monkeypatch) -> None:
 
     monkeypatch.setenv("SKYWATCH_STORAGE_BACKEND", "memory")
     storage.reset_backend_for_tests()
+
+
+def _patch_auth(api, monkeypatch, account_id: str = TEST_ACCOUNT_ID) -> None:
+    monkeypatch.setattr(
+        api,
+        "verify_firebase_token",
+        lambda _: {
+            "uid": account_id,
+            "email": f"{account_id}@example.com",
+            "name": "Test User",
+            "picture": "https://example.com/avatar.png",
+        },
+    )
 
 
 def _client(tmp_path: Path, monkeypatch) -> TestClient:
@@ -23,7 +41,10 @@ def _client(tmp_path: Path, monkeypatch) -> TestClient:
     import api
 
     importlib.reload(api)
-    return TestClient(api.app)
+    _patch_auth(api, monkeypatch)
+    client = TestClient(api.app)
+    client.headers.update(AUTH_HEADERS)
+    return client
 
 
 def test_note_ingestion_creates_knowledge_artifacts(tmp_path: Path, monkeypatch) -> None:
@@ -50,49 +71,81 @@ def test_note_ingestion_creates_knowledge_artifacts(tmp_path: Path, monkeypatch)
     assert sources[0]["title"] == "Transformers"
     assert "# Summary" in detail["markdown"]
     assert posts[0]["source_id"] == source["id"]
-    assert posts[0]["account_id"] == "second-signal"
+    assert posts[0]["account_id"] == TEST_ACCOUNT_ID
     assert any(node["type"] == "concept" for node in graph["nodes"])
 
 
-def test_account_endpoint_returns_default_account(tmp_path: Path, monkeypatch) -> None:
+def test_account_endpoint_returns_google_account(tmp_path: Path, monkeypatch) -> None:
     client = _client(tmp_path, monkeypatch)
 
     response = client.get("/account")
 
     assert response.status_code == 200
     assert response.json() == {
-        "id": "second-signal",
-        "name": "Second Signal",
-        "handle": "personal-kb",
-        "initials": "SS",
+        "id": TEST_ACCOUNT_ID,
+        "name": "Test User",
+        "handle": TEST_ACCOUNT_ID,
+        "initials": "TU",
+        "email": f"{TEST_ACCOUNT_ID}@example.com",
+        "avatar_url": "https://example.com/avatar.png",
     }
 
 
-def test_posts_endpoint_normalizes_legacy_posts(tmp_path: Path, monkeypatch) -> None:
-    import storage
-
+def test_unauthenticated_request_is_rejected(tmp_path: Path, monkeypatch) -> None:
     _patch_storage(tmp_path, monkeypatch)
-    storage.save_posts(
-        [
-            {
-                "id": "legacy-post",
-                "source_id": "legacy-source",
-                "source_title": "Legacy Source",
-                "body": "Legacy body",
-                "created_at": "2026-06-20T00:00:00+00:00",
-            }
-        ]
-    )
 
     import api
 
     importlib.reload(api)
     client = TestClient(api.app)
 
+    response = client.get("/sources")
+
+    assert response.status_code == 401
+
+
+def test_posts_endpoint_filters_by_account(tmp_path: Path, monkeypatch) -> None:
+    import storage
+
+    _patch_storage(tmp_path, monkeypatch)
+    storage.save_posts(
+        TEST_ACCOUNT_ID,
+        [
+            {
+                "id": "user-post",
+                "account_id": TEST_ACCOUNT_ID,
+                "source_id": "user-source",
+                "source_title": "User Source",
+                "body": "User body",
+                "created_at": "2026-06-20T00:00:00+00:00",
+            }
+        ]
+    )
+    storage.save_posts(
+        "other-user",
+        [
+            {
+                "id": "other-post",
+                "account_id": "other-user",
+                "source_id": "other-source",
+                "source_title": "Other Source",
+                "body": "Other body",
+                "created_at": "2026-06-20T01:00:00+00:00",
+            }
+        ],
+    )
+
+    import api
+
+    importlib.reload(api)
+    _patch_auth(api, monkeypatch)
+    client = TestClient(api.app)
+    client.headers.update(AUTH_HEADERS)
+
     response = client.get("/posts")
 
     assert response.status_code == 200
-    assert response.json()[0]["account_id"] == "second-signal"
+    assert [post["id"] for post in response.json()] == ["user-post"]
 
 
 def test_invalid_note_does_not_persist_source(tmp_path: Path, monkeypatch) -> None:
@@ -107,6 +160,29 @@ def test_invalid_note_does_not_persist_source(tmp_path: Path, monkeypatch) -> No
     assert client.get("/graph").json() == {"nodes": [], "edges": []}
 
 
+def test_source_detail_is_account_scoped(tmp_path: Path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    created = client.post(
+        "/sources",
+        json={
+            "type": "note",
+            "title": "Private Note",
+            "text": "This note belongs to one Google account.",
+        },
+    )
+    source_id = created.json()["id"]
+
+    import api
+
+    _patch_auth(api, monkeypatch, account_id="other-user")
+    other_client = TestClient(api.app)
+    other_client.headers.update(AUTH_HEADERS)
+
+    response = other_client.get(f"/sources/{source_id}")
+
+    assert response.status_code == 404
+
+
 def test_pdf_ingestion_uses_extractor(tmp_path: Path, monkeypatch) -> None:
     _patch_storage(tmp_path, monkeypatch)
     monkeypatch.setattr("ingestion.extract_pdf_text", lambda _: "A paper about graph retrieval.")
@@ -116,7 +192,9 @@ def test_pdf_ingestion_uses_extractor(tmp_path: Path, monkeypatch) -> None:
     import api
 
     importlib.reload(api)
+    _patch_auth(api, monkeypatch)
     client = TestClient(api.app)
+    client.headers.update(AUTH_HEADERS)
     response = client.post(
         "/sources",
         files={"file": ("paper.pdf", b"%PDF-1.4 fake", "application/pdf")},
@@ -166,6 +244,7 @@ def test_parallel_note_ingestion_preserves_all_artifacts(tmp_path: Path, monkeyp
 
     def ingest(index: int) -> dict:
         return ingestion.ingest_source(
+            account_id=TEST_ACCOUNT_ID,
             source_type="note",
             title=f"Note {index}",
             text=f"Concurrent note {index} about storage and retrieval.",
@@ -175,9 +254,9 @@ def test_parallel_note_ingestion_preserves_all_artifacts(tmp_path: Path, monkeyp
         results = list(pool.map(ingest, range(2)))
 
     assert all(source["status"] == "ready" for source in results)
-    assert len(storage.load_sources()) == 2
-    assert len(storage.load_posts()) == 2
-    chunk_source_ids = {chunk["source_id"] for chunk in storage.load_chunks()}
+    assert len(storage.load_sources(TEST_ACCOUNT_ID)) == 2
+    assert len(storage.load_posts(TEST_ACCOUNT_ID)) == 2
+    chunk_source_ids = {chunk["source_id"] for chunk in storage.load_chunks(TEST_ACCOUNT_ID)}
     assert {source["id"] for source in results}.issubset(chunk_source_ids)
 
 
@@ -208,6 +287,7 @@ def test_chat_expands_context_with_graph_neighbors(tmp_path: Path, monkeypatch) 
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     storage.save_chunks(
+        TEST_ACCOUNT_ID,
         [
             {
                 "id": "chunk-a",
@@ -268,6 +348,7 @@ def test_chat_expands_context_with_graph_neighbors(tmp_path: Path, monkeypatch) 
         ]
     )
     storage.save_graph(
+        TEST_ACCOUNT_ID,
         {
             "nodes": [
                 {"id": "source-source-a", "label": "Attention Note", "type": "source"},
@@ -284,8 +365,10 @@ def test_chat_expands_context_with_graph_neighbors(tmp_path: Path, monkeypatch) 
     import api
 
     importlib.reload(api)
+    _patch_auth(api, monkeypatch)
     monkeypatch.setattr(api, "embed_text", lambda _: [1.0, 0.0])
     client = TestClient(api.app)
+    client.headers.update(AUTH_HEADERS)
 
     response = client.post("/chat", json={"message": "How does attention connect to graph retrieval?"})
 
@@ -303,6 +386,7 @@ def test_chat_graphrag_falls_back_without_graph(tmp_path: Path, monkeypatch) -> 
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     storage.save_chunks(
+        TEST_ACCOUNT_ID,
         [
             {
                 "id": "chunk-a",
@@ -314,13 +398,15 @@ def test_chat_graphrag_falls_back_without_graph(tmp_path: Path, monkeypatch) -> 
             }
         ]
     )
-    storage.save_graph({"nodes": [], "edges": []})
+    storage.save_graph(TEST_ACCOUNT_ID, {"nodes": [], "edges": []})
 
     import api
 
     importlib.reload(api)
+    _patch_auth(api, monkeypatch)
     monkeypatch.setattr(api, "embed_text", lambda _: [1.0, 0.0])
     client = TestClient(api.app)
+    client.headers.update(AUTH_HEADERS)
 
     response = client.post("/chat", json={"message": "Does chat still work?"})
 
@@ -339,6 +425,7 @@ def test_chat_skips_chunks_with_incompatible_embedding_dimensions(
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     storage.save_chunks(
+        TEST_ACCOUNT_ID,
         [
             {
                 "id": "bad-dim",
@@ -358,13 +445,15 @@ def test_chat_skips_chunks_with_incompatible_embedding_dimensions(
             },
         ]
     )
-    storage.save_graph({"nodes": [], "edges": []})
+    storage.save_graph(TEST_ACCOUNT_ID, {"nodes": [], "edges": []})
 
     import api
 
     importlib.reload(api)
+    _patch_auth(api, monkeypatch)
     monkeypatch.setattr(api, "embed_text", lambda _: [1.0, 0.0])
     client = TestClient(api.app)
+    client.headers.update(AUTH_HEADERS)
 
     response = client.post("/chat", json={"message": "Which chunk is compatible?"})
 
@@ -382,4 +471,39 @@ def test_firestore_backend_requires_credentials(tmp_path: Path, monkeypatch) -> 
     storage.reset_backend_for_tests()
 
     with pytest.raises(RuntimeError, match="Firebase credentials are required"):
-        storage.load_sources()
+        storage.load_sources(TEST_ACCOUNT_ID)
+
+
+def test_firebase_admin_app_initialization_is_thread_safe(monkeypatch) -> None:
+    import firebase_admin_app
+
+    calls = {"get": 0, "initialize": 0}
+    fake_firebase_admin = types.ModuleType("firebase_admin")
+    fake_credentials = types.SimpleNamespace(Certificate=lambda path: f"cert:{path}")
+    app = object()
+
+    def get_app() -> object:
+        calls["get"] += 1
+        if calls["initialize"]:
+            return app
+        raise ValueError("missing")
+
+    def initialize_app(credential=None) -> object:
+        calls["initialize"] += 1
+        if calls["initialize"] > 1:
+            raise ValueError("duplicate")
+        return app
+
+    fake_firebase_admin.get_app = get_app
+    fake_firebase_admin.initialize_app = initialize_app
+    monkeypatch.setitem(sys.modules, "firebase_admin", fake_firebase_admin)
+    monkeypatch.setitem(sys.modules, "firebase_admin.credentials", fake_credentials)
+    monkeypatch.setenv("FIREBASE_SERVICE_ACCOUNT_FILE", "/tmp/service-account.json")
+
+    importlib.reload(firebase_admin_app)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: firebase_admin_app.get_firebase_admin_app(), range(2)))
+
+    assert results == [app, app]
+    assert calls["initialize"] == 1

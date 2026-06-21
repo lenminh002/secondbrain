@@ -2,12 +2,16 @@ import type { AccountRecord, ApiError, Citation, KnowledgeGraph, PostRecord, Sou
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-export async function fetchKnowledgeData() {
+function authHeaders(token: string) {
+  return { Authorization: `Bearer ${token}` };
+}
+
+export async function fetchKnowledgeData(token: string) {
   const [accountResponse, sourceResponse, postResponse, graphResponse] = await Promise.all([
-    fetch(`${API_BASE_URL}/account`),
-    fetch(`${API_BASE_URL}/sources`),
-    fetch(`${API_BASE_URL}/posts`),
-    fetch(`${API_BASE_URL}/graph`),
+    fetch(`${API_BASE_URL}/account`, { headers: authHeaders(token) }),
+    fetch(`${API_BASE_URL}/sources`, { headers: authHeaders(token) }),
+    fetch(`${API_BASE_URL}/posts`, { headers: authHeaders(token) }),
+    fetch(`${API_BASE_URL}/graph`, { headers: authHeaders(token) }),
   ]);
 
   if (!accountResponse.ok || !sourceResponse.ok || !postResponse.ok || !graphResponse.ok) {
@@ -22,23 +26,27 @@ export async function fetchKnowledgeData() {
   };
 }
 
-export async function fetchSourceDetail(sourceId: string) {
-  const response = await fetch(`${API_BASE_URL}/sources/${sourceId}`);
+export async function fetchSourceDetail(token: string, sourceId: string) {
+  const response = await fetch(`${API_BASE_URL}/sources/${sourceId}`, { headers: authHeaders(token) });
   if (!response.ok) throw new Error("Source detail failed to load.");
   return (await response.json()) as SourceDetail;
 }
 
-export async function createSource(formData: FormData) {
-  const response = await fetch(`${API_BASE_URL}/sources`, { method: "POST", body: formData });
+export async function createSource(token: string, formData: FormData) {
+  const response = await fetch(`${API_BASE_URL}/sources`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: formData,
+  });
   const payload = (await response.json()) as SourceRecord & ApiError;
   if (!response.ok) throw new Error(payload.detail || "Source ingestion failed.");
   return payload;
 }
 
-export async function sendChatMessage(message: string) {
+export async function sendChatMessage(token: string, message: string) {
   const response = await fetch(`${API_BASE_URL}/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
     body: JSON.stringify({ message }),
   });
   const payload = (await response.json()) as { answer: string; citations?: Citation[] } & ApiError;

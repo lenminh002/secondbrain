@@ -11,7 +11,6 @@ from knowledge_ai import enrich_content
 from storage import (
     append_source,
     commit_source_artifacts,
-    get_default_account,
     save_source_result,
 )
 
@@ -108,6 +107,7 @@ def _chunk_markdown(markdown: str, source: dict[str, Any], max_chars: int = 1400
 
 
 def _replace_source_artifacts(source: dict[str, Any], markdown: str, enrichment: dict[str, Any]) -> None:
+    account_id = str(source["account_id"])
     chunks = _chunk_markdown(markdown, source)
     embeddings = embed_texts([chunk["text"] for chunk in chunks]) if chunks else []
     embedding_model = current_embedding_model()
@@ -118,13 +118,14 @@ def _replace_source_artifacts(source: dict[str, Any], markdown: str, enrichment:
 
     post = {
         "id": str(uuid.uuid4()),
-        "account_id": get_default_account()["id"],
+        "account_id": account_id,
         "source_id": source["id"],
         "source_title": source["title"],
         "body": enrichment["social_post"],
         "created_at": now_iso(),
     }
     commit_source_artifacts(
+        account_id,
         source,
         chunks,
         post,
@@ -152,6 +153,7 @@ def validate_source_input(
 
 
 def ingest_source(
+    account_id: str,
     source_type: str,
     title: str | None = None,
     text: str | None = None,
@@ -159,6 +161,9 @@ def ingest_source(
     file_bytes: bytes | None = None,
     filename: str | None = None,
 ) -> dict[str, Any]:
+    account_id = account_id.strip()
+    if not account_id:
+        raise ValueError("Account ID is required.")
     validate_source_input(
         source_type=source_type,
         text=text,
@@ -168,6 +173,7 @@ def ingest_source(
 
     source = {
         "id": str(uuid.uuid4()),
+        "account_id": account_id,
         "type": source_type,
         "title": (title or filename or source_url or "Untitled source").strip(),
         "source_url": source_url,
@@ -175,7 +181,7 @@ def ingest_source(
         "error": None,
         "created_at": now_iso(),
     }
-    append_source(source)
+    append_source(account_id, source)
 
     try:
         if source_type == "note":
@@ -193,5 +199,5 @@ def ingest_source(
         source["status"] = "failed"
         source["error"] = str(exc)
 
-    save_source_result(source)
+    save_source_result(account_id, source)
     return source

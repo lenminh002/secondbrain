@@ -3,63 +3,60 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-DEFAULT_ACCOUNT = {
-    "id": "second-signal",
-    "name": "Second Signal",
-    "handle": "personal-kb",
-    "initials": "SS",
-}
-DEFAULT_GRAPH_ID = "default"
-
 
 class StorageBackend(ABC):
     @abstractmethod
-    def get_default_account(self) -> dict[str, str]:
+    def get_account(self, account_id: str) -> dict[str, str] | None:
         raise NotImplementedError
 
     @abstractmethod
-    def load_sources(self) -> list[dict[str, Any]]:
+    def upsert_account(self, account: dict[str, str]) -> dict[str, str]:
         raise NotImplementedError
 
     @abstractmethod
-    def save_sources(self, sources: list[dict[str, Any]]) -> None:
+    def load_sources(self, account_id: str) -> list[dict[str, Any]]:
         raise NotImplementedError
 
     @abstractmethod
-    def load_chunks(self) -> list[dict[str, Any]]:
+    def save_sources(self, account_id: str, sources: list[dict[str, Any]]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def save_chunks(self, chunks: list[dict[str, Any]]) -> None:
+    def load_chunks(self, account_id: str) -> list[dict[str, Any]]:
         raise NotImplementedError
 
     @abstractmethod
-    def load_posts(self) -> list[dict[str, Any]]:
+    def save_chunks(self, account_id: str, chunks: list[dict[str, Any]]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def save_posts(self, posts: list[dict[str, Any]]) -> None:
+    def load_posts(self, account_id: str) -> list[dict[str, Any]]:
         raise NotImplementedError
 
     @abstractmethod
-    def load_graph(self) -> dict[str, list[dict[str, Any]]]:
+    def save_posts(self, account_id: str, posts: list[dict[str, Any]]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def save_graph(self, graph: dict[str, list[dict[str, Any]]]) -> None:
+    def load_graph(self, account_id: str) -> dict[str, list[dict[str, Any]]]:
         raise NotImplementedError
 
     @abstractmethod
-    def append_source(self, source: dict[str, Any]) -> None:
+    def save_graph(self, account_id: str, graph: dict[str, list[dict[str, Any]]]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def save_source_result(self, source: dict[str, Any]) -> None:
+    def append_source(self, account_id: str, source: dict[str, Any]) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_source_result(self, account_id: str, source: dict[str, Any]) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def commit_source_artifacts(
         self,
+        account_id: str,
         source: dict[str, Any],
         chunks: list[dict[str, Any]],
         post: dict[str, Any],
@@ -69,9 +66,9 @@ class StorageBackend(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def save_document(self, source_id: str, markdown: str) -> None:
+    def save_document(self, account_id: str, source_id: str, markdown: str) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def load_document(self, source_id: str) -> str:
+    def load_document(self, account_id: str, source_id: str) -> str:
         raise NotImplementedError

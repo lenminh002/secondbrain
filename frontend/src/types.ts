@@ -8,6 +8,8 @@ export type AccountRecord = {
   name: string;
   handle: string;
   initials: string;
+  email?: string;
+  avatar_url?: string;
 };
 
 export type SourceRecord = {

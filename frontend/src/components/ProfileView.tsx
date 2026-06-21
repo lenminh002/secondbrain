@@ -1,6 +1,6 @@
 import { AtSign, BadgeCheck, Bug, CalendarDays, FileText, Grid2X2, Repeat2, Tag, Upload } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -35,6 +35,7 @@ export function ProfileView({
           <div className="px-5 pb-6">
             <div className="-mt-12 flex h-28 w-28 items-center justify-center rounded-full border-4 border-background bg-slate-100 shadow-sm md:-mt-16 md:h-36 md:w-36">
               <Avatar className="h-full w-full">
+                {account?.avatar_url && <AvatarImage alt={account.name} src={account.avatar_url} />}
                 <AvatarFallback className="text-2xl md:text-3xl">{account?.initials || ""}</AvatarFallback>
               </Avatar>
             </div>
@@ -118,14 +119,15 @@ export function ProfileView({
                     {posts.map((post) => (
                       <Card key={post.id}>
                         <CardHeader className="flex-row gap-3 space-y-0">
-                          <Avatar>
-                            <AvatarFallback>{account?.initials || ""}</AvatarFallback>
-                          </Avatar>
+                  <Avatar>
+                    {account?.avatar_url && <AvatarImage alt={account.name} src={account.avatar_url} />}
+                    <AvatarFallback>{account?.initials || ""}</AvatarFallback>
+                  </Avatar>
                           <div>
                             <CardTitle className="text-base">{post.source_title}</CardTitle>
                             <CardDescription>
                               {account ? `${account.name} · ` : ""}
-                              User ID: {post.account_id} ·{" "}
+                              @{account?.handle || post.account_id} ·{" "}
                               {formatDate(post.created_at)} · AI-generated digest
                             </CardDescription>
                           </div>

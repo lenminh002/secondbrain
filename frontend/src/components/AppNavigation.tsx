@@ -5,13 +5,14 @@ import {
   Compass,
   GitBranch,
   Home,
+  LogOut,
   PenLine,
   Search,
   Settings,
   Upload,
 } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AccountRecord, ActiveView, NotesMode } from "@/types";
@@ -30,7 +31,13 @@ export function Logo({ account }: { account: AccountRecord | null }) {
   );
 }
 
-export function TopBar({ account }: { account: AccountRecord | null }) {
+export function TopBar({
+  account,
+  signOutUser,
+}: {
+  account: AccountRecord | null;
+  signOutUser: () => Promise<void>;
+}) {
   return (
     <header className="sticky top-0 z-30 flex h-[74px] items-center justify-between border-b bg-background/95 px-5 backdrop-blur">
       <Logo account={account} />
@@ -43,8 +50,12 @@ export function TopBar({ account }: { account: AccountRecord | null }) {
           <Search className="h-5 w-5" />
         </Button>
         <Avatar>
+          {account?.avatar_url && <AvatarImage alt={account.name} src={account.avatar_url} />}
           <AvatarFallback>{account?.initials || ""}</AvatarFallback>
         </Avatar>
+        <Button onClick={() => void signOutUser()} size="icon" variant="ghost">
+          <LogOut className="h-5 w-5" />
+        </Button>
       </div>
     </header>
   );
@@ -70,9 +81,13 @@ export function SidebarNav({ account, activeView, notesMode, setActiveView, setN
     <aside className="sticky top-[74px] hidden h-[calc(100vh-74px)] border-r bg-background px-5 py-7 lg:block">
       <div className="mb-8 flex items-center gap-3">
         <Avatar className="h-14 w-14">
+          {account?.avatar_url && <AvatarImage alt={account.name} src={account.avatar_url} />}
           <AvatarFallback>{account?.initials || ""}</AvatarFallback>
         </Avatar>
-        <div className="text-sm text-muted-foreground">{account ? `@${account.handle}` : "Loading account"}</div>
+        <div>
+          <div className="font-semibold">{account?.name || "Loading"}</div>
+          <div className="text-sm text-muted-foreground">{account ? `@${account.handle}` : "Loading account"}</div>
+        </div>
       </div>
       <nav className="space-y-1">
         {items.map((item) => (

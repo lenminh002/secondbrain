@@ -14,6 +14,7 @@ def main() -> None:
     parser.add_argument("--text", default=None)
     parser.add_argument("--url", default=None)
     parser.add_argument("--file", default=None)
+    parser.add_argument("--account-id", default="cli-user")
     args = parser.parse_args()
 
     file_bytes = None
@@ -24,6 +25,7 @@ def main() -> None:
         filename = path.name
 
     source = ingest_source(
+        account_id=args.account_id,
         source_type=args.type,
         title=args.title,
         text=args.text,

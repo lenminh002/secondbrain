@@ -6,14 +6,15 @@ from typing import Any
 
 import anyio
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.datastructures import UploadFile
 
 from embeddings import cosine_similarity, embed_text
+from firebase_admin_app import get_firebase_admin_app
 from ingestion import VideoIngestionDeferred, ingest_source
 from knowledge_ai import answer_with_context
-from storage import get_default_account, load_chunks, load_document, load_graph, load_posts, load_sources
+from storage import load_chunks, load_document, load_graph, load_posts, load_sources, upsert_account
 
 app = FastAPI(title="Personal Knowledge Base API", version="0.1.0")
 
@@ -24,6 +25,57 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _initials(name: str, email: str) -> str:
+    parts = [part[0] for part in name.split() if part]
+    if len(parts) >= 2:
+        return "".join(parts[:2]).upper()
+    if parts:
+        return parts[0].upper()
+    return (email[:1] or "?").upper()
+
+
+def _handle_from_email(email: str, fallback: str) -> str:
+    handle = email.split("@", 1)[0].strip() if email else fallback
+    return handle or fallback
+
+
+def verify_firebase_token(id_token: str) -> dict[str, Any]:
+    try:
+        from firebase_admin import auth
+    except ImportError as exc:
+        raise HTTPException(status_code=500, detail="firebase-admin is not installed.") from exc
+
+    try:
+        get_firebase_admin_app()
+        return auth.verify_id_token(id_token)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Invalid authentication token.") from exc
+
+
+def account_from_claims(claims: dict[str, Any]) -> dict[str, str]:
+    account_id = str(claims.get("uid") or claims.get("sub") or "").strip()
+    if not account_id:
+        raise HTTPException(status_code=401, detail="Authentication token is missing a user id.")
+    email = str(claims.get("email") or "").strip()
+    name = str(claims.get("name") or email or "Google User").strip()
+    account = {
+        "id": account_id,
+        "name": name,
+        "handle": _handle_from_email(email, account_id),
+        "initials": _initials(name, email),
+        "email": email,
+        "avatar_url": str(claims.get("picture") or "").strip(),
+    }
+    return upsert_account(account)
+
+
+def current_account(authorization: str | None = Header(default=None)) -> dict[str, str]:
+    scheme, _, token = (authorization or "").partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(status_code=401, detail="Authentication token is required.")
+    return account_from_claims(verify_firebase_token(token))
 
 
 def _sort_newest(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -133,11 +185,11 @@ def _rank_chunks(
     ]
 
 
-def _chat_response(message: str) -> dict[str, Any]:
+def _chat_response(account_id: str, message: str) -> dict[str, Any]:
     question_embedding = embed_text(message)
-    chunks = load_chunks(copy_result=False)
+    chunks = load_chunks(account_id, copy_result=False)
     top_chunks = _rank_chunks(question_embedding, chunks)
-    expanded_chunks, graph_context = _build_graph_context(top_chunks, chunks, load_graph())
+    expanded_chunks, graph_context = _build_graph_context(top_chunks, chunks, load_graph(account_id))
     answer = answer_with_context(message, expanded_chunks, graph_context)
     return {
         "answer": answer,
@@ -183,20 +235,27 @@ async def _parse_source_request(request: Request) -> dict[str, Any]:
 
 
 @app.get("/sources")
-def get_sources() -> list[dict[str, Any]]:
-    return _sort_newest(load_sources())
+def get_sources(account: dict[str, str] = Depends(current_account)) -> list[dict[str, Any]]:
+    return _sort_newest(load_sources(account["id"]))
 
 
 @app.get("/sources/{source_id}")
-def get_source(source_id: str) -> dict[str, Any]:
-    for source in load_sources():
+def get_source(
+    source_id: str,
+    account: dict[str, str] = Depends(current_account),
+) -> dict[str, Any]:
+    account_id = account["id"]
+    for source in load_sources(account_id):
         if source.get("id") == source_id:
-            return {**source, "markdown": load_document(source_id)}
+            return {**source, "markdown": load_document(account_id, source_id)}
     raise HTTPException(status_code=404, detail="Source not found")
 
 
 @app.post("/sources")
-async def create_source(request: Request) -> dict[str, Any]:
+async def create_source(
+    request: Request,
+    account: dict[str, str] = Depends(current_account),
+) -> dict[str, Any]:
     payload = await _parse_source_request(request)
     source_type = str(payload.get("type") or "").strip().lower()
     if not source_type:
@@ -206,6 +265,7 @@ async def create_source(request: Request) -> dict[str, Any]:
         return await anyio.to_thread.run_sync(
             partial(
                 ingest_source,
+                account_id=account["id"],
                 source_type=source_type,
                 title=str(payload.get("title") or "").strip() or None,
                 text=str(payload.get("text") or "").strip() or None,
@@ -221,22 +281,25 @@ async def create_source(request: Request) -> dict[str, Any]:
 
 
 @app.get("/posts")
-def get_posts() -> list[dict[str, Any]]:
-    return _sort_newest(load_posts())
+def get_posts(account: dict[str, str] = Depends(current_account)) -> list[dict[str, Any]]:
+    return _sort_newest(load_posts(account["id"]))
 
 
 @app.get("/account")
-def get_account() -> dict[str, str]:
-    return get_default_account()
+def get_account(account: dict[str, str] = Depends(current_account)) -> dict[str, str]:
+    return account
 
 
 @app.get("/graph")
-def get_graph() -> dict[str, list[dict[str, Any]]]:
-    return load_graph()
+def get_graph(account: dict[str, str] = Depends(current_account)) -> dict[str, list[dict[str, Any]]]:
+    return load_graph(account["id"])
 
 
 @app.post("/chat")
-async def chat(request: Request) -> dict[str, Any]:
+async def chat(
+    request: Request,
+    account: dict[str, str] = Depends(current_account),
+) -> dict[str, Any]:
     payload = await request.json()
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="JSON body must be an object.")
@@ -244,7 +307,7 @@ async def chat(request: Request) -> dict[str, Any]:
     if not message:
         raise HTTPException(status_code=400, detail="Message is required.")
 
-    return await anyio.to_thread.run_sync(_chat_response, message)
+    return await anyio.to_thread.run_sync(_chat_response, account["id"], message)
 
 
 if __name__ == "__main__":

@@ -4,16 +4,9 @@ import re
 import uuid
 from typing import Any
 
-from storage_backends.base import DEFAULT_ACCOUNT
-
-
 def slugify(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return slug[:80] or str(uuid.uuid4())
-
-
-def post_with_default_account(post: dict[str, Any]) -> dict[str, Any]:
-    return {"account_id": DEFAULT_ACCOUNT["id"], **post}
 
 
 def coerce_list(value: Any) -> list[dict[str, Any]]:
