@@ -54,13 +54,12 @@ export function ChatPanel({
   return (
     <Card className="flex h-full min-h-0 flex-col rounded-none border-0 shadow-none lg:rounded-none relative">
       <CardHeader className={cn("border-b", toggleMinimize && "pr-14")}>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Bot className="h-5 w-5" />
               <CardTitle>The Librarian</CardTitle>
             </div>
-            <CardDescription>Ask across notes, graph nodes, and generated posts.</CardDescription>
           </div>
           {archiveChatHistory && (
             <Button

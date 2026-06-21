@@ -1,9 +1,9 @@
 import { FormEvent } from "react";
-import { CheckCircle2, Loader2, Upload, X } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -191,37 +191,6 @@ export function IngestSourceDrawer({
                 {isSubmitting ? "Ingesting source..." : "Ingest source"}
               </Button>
             </form>
-
-            <div className="space-y-4">
-              <Card className="rounded-lg shadow-none border bg-muted/10">
-                <CardHeader className="p-3">
-                  <CardTitle className="flex items-center gap-1.5 text-xs font-semibold">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-                    What happens next
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 p-3 pt-0 text-xs text-muted-foreground">
-                  <p>1. Extract readable content from the source.</p>
-                  <p>2. Normalize it into structured memory fields.</p>
-                  <p>3. Generate summary, concepts, claims, and a social post.</p>
-                  <p>4. Add chunks to retrieval and concepts to the graph.</p>
-                </CardContent>
-              </Card>
-              <div className="flex flex-wrap gap-1.5">
-                <Badge variant="outline" className="text-[10px]">
-                  Memories vault
-                </Badge>
-                <Badge variant="outline" className="text-[10px]">
-                  Home feed
-                </Badge>
-                <Badge variant="outline" className="text-[10px]">
-                  Graph
-                </Badge>
-                <Badge variant="outline" className="text-[10px]">
-                  Chat context
-                </Badge>
-              </div>
-            </div>
           </div>
         </div>
       </DrawerContent>
