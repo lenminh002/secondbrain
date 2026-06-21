@@ -116,18 +116,6 @@ export function SidebarNav({
         </Tooltip>
       </div>
 
-      <div className={cn("mb-8 flex items-center transition-all duration-300", isMinimized ? "flex-col gap-2 justify-center" : "gap-3")}>
-        <Avatar className={cn("transition-all duration-300", isMinimized ? "h-10 w-10" : "h-14 w-14")}>
-          {account?.avatar_url && <AvatarImage alt={account.name} src={account.avatar_url} />}
-          <AvatarFallback>{account?.initials || ""}</AvatarFallback>
-        </Avatar>
-        {!isMinimized && (
-          <div className="transition-all duration-300 opacity-100 whitespace-nowrap overflow-hidden">
-            <div className="font-semibold">{account?.name || "Loading"}</div>
-            <div className="text-sm text-muted-foreground">{account ? `@${account.handle}` : "Loading account"}</div>
-          </div>
-        )}
-      </div>
 
       <nav className="space-y-1 flex-grow flex flex-col items-stretch">
         {items.map((item) => {
