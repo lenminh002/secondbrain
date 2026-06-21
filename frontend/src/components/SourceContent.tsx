@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react";
 
+import { Textarea } from "@/components/ui/textarea";
 import type { SourceDetail } from "@/types";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -24,7 +25,19 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
-export function SourceContent({ source }: { source: SourceDetail }) {
+export function SourceContent({
+  draftContent,
+  isEditing,
+  isSaving,
+  onDraftContentChange,
+  source,
+}: {
+  draftContent?: string;
+  isEditing?: boolean;
+  isSaving?: boolean;
+  onDraftContentChange?: (content: string) => void;
+  source: SourceDetail;
+}) {
   const originalFile = source.metadata?.original_file;
   const originalFileLink = originalFile?.drive_web_view_link || source.source_url;
 
@@ -59,9 +72,18 @@ export function SourceContent({ source }: { source: SourceDetail }) {
         </Section>
       )}
 
-      {source.content && (
+      {(source.content || isEditing) && (
         <Section title="Notes">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed">{source.content}</p>
+          {isEditing ? (
+            <Textarea
+              className="min-h-[260px] resize-y leading-relaxed"
+              disabled={isSaving}
+              onChange={(event) => onDraftContentChange?.(event.target.value)}
+              value={draftContent ?? ""}
+            />
+          ) : (
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">{source.content}</p>
+          )}
         </Section>
       )}
 

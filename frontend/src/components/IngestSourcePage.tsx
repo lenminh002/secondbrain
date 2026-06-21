@@ -12,7 +12,6 @@ import type { SourceRecord, SourceType } from "@/types";
 
 function sourceTypeLabel(type: SourceType) {
   if (type === "pdf") return "PDF";
-  if (type === "youtube") return "Video";
   return "Note";
 }
 
@@ -27,10 +26,8 @@ export function IngestSourcePage({
   setNoteText,
   setPdfFile,
   setTitle,
-  setYoutubeUrl,
   submitSource,
   title,
-  youtubeUrl,
 }: {
   activeType: SourceType;
   ingestProgress: SourceRecord | null;
@@ -42,10 +39,8 @@ export function IngestSourcePage({
   setNoteText: (value: string) => void;
   setPdfFile: (file: File | null) => void;
   setTitle: (value: string) => void;
-  setYoutubeUrl: (value: string) => void;
   submitSource: (event: FormEvent<HTMLFormElement>) => void;
   title: string;
-  youtubeUrl: string;
 }) {
   const progressPercent = Math.min(100, Math.max(0, ingestProgress?.progress_percent ?? 0));
   const progressType = ingestProgress?.type ?? activeType;
@@ -58,7 +53,7 @@ export function IngestSourcePage({
       <div className="flex h-14 items-center justify-between border-b px-6">
         <div>
           <h1 className="font-bold">Ingest Source</h1>
-          <p className="text-xs text-muted-foreground">Turn notes, papers, and videos into structured memory.</p>
+          <p className="text-xs text-muted-foreground">Turn notes and papers into structured memory.</p>
         </div>
         <Badge variant="secondary">
           <Sparkles className="mr-1 h-3 w-3" />
@@ -80,13 +75,11 @@ export function IngestSourcePage({
             <CardContent className="pt-5">
               <form className="space-y-5" onSubmit={submitSource}>
                 <Tabs value={activeType} onValueChange={(value) => { if (!isSubmitting) setActiveType(value as SourceType); }}>
-                  <TabsList className="grid w-full grid-cols-3">
+                  <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger disabled={isSubmitting} value="note">Note</TabsTrigger>
                     <TabsTrigger disabled={isSubmitting} value="pdf">PDF</TabsTrigger>
-                    <TabsTrigger disabled value="youtube">Video</TabsTrigger>
                   </TabsList>
                 </Tabs>
-                <p className="text-xs text-muted-foreground">Video ingestion to be fixed.</p>
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold" htmlFor="ingest-title">Title</label>
@@ -112,14 +105,6 @@ export function IngestSourcePage({
                     <label className="text-sm font-semibold" htmlFor="ingest-pdf">PDF</label>
                     <Input disabled={isSubmitting} id="ingest-pdf" accept="application/pdf" type="file" onChange={(event) => setPdfFile(event.target.files?.[0] || null)} />
                     <p className="text-xs text-muted-foreground">{pdfFile ? `${pdfFile.name} selected` : "Upload a readable PDF with selectable text."}</p>
-                  </div>
-                )}
-
-                {activeType === "youtube" && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold" htmlFor="ingest-youtube">YouTube URL</label>
-                    <Input disabled={isSubmitting} id="ingest-youtube" value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder="https://youtube.com/watch?v=..." />
-                    <p className="text-xs text-muted-foreground">MVP uses available captions/transcripts only.</p>
                   </div>
                 )}
 

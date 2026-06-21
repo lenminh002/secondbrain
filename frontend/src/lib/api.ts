@@ -1,6 +1,8 @@
-import type { AccountRecord, AgentTraceStep, ApiError, Citation, GraphContext, KnowledgeGraph, PostRecord, SourceDetail, SourceRecord, ToolCall } from "@/types";
+import type { AccountRecord, AgentTraceStep, ApiError, ChatHistoryMessage, ChatMessage, Citation, GraphContext, KnowledgeGraph, PostRecord, SourceDetail, SourceRecord, ToolCall } from "@/types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const ARCHIVE_POLL_INTERVAL_MS = 750;
+const ARCHIVE_MAX_POLLS = 120;
 
 async function responseError(response: Response, fallback: string) {
   try {
@@ -40,6 +42,16 @@ export async function fetchSourceDetail(sourceId: string) {
   return (await response.json()) as SourceDetail;
 }
 
+export async function updateSourceContent(sourceId: string, content: string) {
+  const response = await fetch(`${API_BASE_URL}/sources/${sourceId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  if (!response.ok) throw await responseError(response, "Memory update failed.");
+  return (await response.json()) as SourceDetail;
+}
+
 export async function createSource(formData: FormData) {
   const response = await fetch(`${API_BASE_URL}/sources`, {
     method: "POST",
@@ -50,11 +62,92 @@ export async function createSource(formData: FormData) {
   return payload;
 }
 
-export async function sendChatMessage(message: string) {
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function completedChatMessages(messages: ChatMessage[]) {
+  return messages.filter((message) => !message.isStreaming && message.text.trim());
+}
+
+function formatArchiveDate(date: Date) {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function chatArchiveTitle(date: Date) {
+  return `Chat Archive - ${formatArchiveDate(date)}`;
+}
+
+function formatChatTranscript(messages: ChatMessage[], archivedAt: Date) {
+  const completedMessages = completedChatMessages(messages);
+  const lines = [
+    "# Chat Archive",
+    "",
+    `Archived: ${archivedAt.toISOString()}`,
+    `Messages: ${completedMessages.length}`,
+    "",
+    "## Transcript",
+  ];
+
+  completedMessages.forEach((message, index) => {
+    const role = message.role === "user" ? "User" : "Assistant";
+    lines.push("", `### ${role} ${index + 1}`, "", message.text.trim());
+
+    if (message.role === "assistant" && message.citations?.length) {
+      const citations = [
+        ...new Set(
+          message.citations
+            .map((citation) => `${citation.source_title} / ${citation.section}`)
+            .filter(Boolean),
+        ),
+      ];
+      if (citations.length) {
+        lines.push("", `Citations: ${citations.join("; ")}`);
+      }
+    }
+  });
+
+  return lines.join("\n");
+}
+
+export async function archiveChatSession(messages: ChatMessage[]) {
+  const completedMessages = completedChatMessages(messages);
+  if (!completedMessages.length) {
+    throw new Error("No completed chat messages to archive.");
+  }
+
+  const archivedAt = new Date();
+  const formData = new FormData();
+  formData.append("type", "note");
+  formData.append("title", chatArchiveTitle(archivedAt));
+  formData.append("text", formatChatTranscript(completedMessages, archivedAt));
+
+  const createdSource = await createSource(formData);
+  let currentSource: SourceRecord | SourceDetail = createdSource;
+
+  for (let attempt = 0; attempt < ARCHIVE_MAX_POLLS && currentSource.status === "processing"; attempt += 1) {
+    await wait(ARCHIVE_POLL_INTERVAL_MS);
+    currentSource = await fetchSourceDetail(createdSource.id);
+  }
+
+  if (currentSource.status === "processing") {
+    throw new Error("Chat archive is still processing. Try again in a moment.");
+  }
+  if (currentSource.status === "failed") {
+    throw new Error(currentSource.error || "Chat archive failed.");
+  }
+
+  return currentSource as SourceDetail;
+}
+
+export async function sendChatMessage(message: string, history: ChatHistoryMessage[] = []) {
   const response = await fetch(`${API_BASE_URL}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, history }),
   });
   const payload = (await response.json()) as {
     answer: string;
@@ -83,11 +176,12 @@ export interface StreamChatCallbacks {
 export async function streamChatMessage(
   message: string,
   callbacks: StreamChatCallbacks,
+  history: ChatHistoryMessage[] = [],
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, history }),
   });
   if (!response.ok || !response.body) {
     const payload = (await response.json().catch(() => ({}))) as ApiError;

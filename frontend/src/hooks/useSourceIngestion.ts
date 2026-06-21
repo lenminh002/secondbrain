@@ -27,7 +27,6 @@ export function useSourceIngestion({
   const [activeType, setActiveType] = useState<SourceType>("note");
   const [title, setTitle] = useState("");
   const [noteText, setNoteText] = useState("");
-  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [ingestProgress, setIngestProgress] = useState<SourceRecord | null>(null);
@@ -35,10 +34,6 @@ export function useSourceIngestion({
   async function submitSource(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSubmitting) return;
-    if (activeType === "youtube") {
-      setNotice("Video ingestion to be fixed.");
-      return;
-    }
     setIsSubmitting(true);
     setIngestProgress(null);
     setNotice("");
@@ -65,7 +60,6 @@ export function useSourceIngestion({
       } else {
         setTitle("");
         setNoteText("");
-        setYoutubeUrl("");
         setPdfFile(null);
         await refresh();
         setSelectedSourceId(completedSource.id);
@@ -87,8 +81,6 @@ export function useSourceIngestion({
     setTitle,
     noteText,
     setNoteText,
-    youtubeUrl,
-    setYoutubeUrl,
     pdfFile,
     setPdfFile,
     isSubmitting,

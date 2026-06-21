@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from starlette.datastructures import UploadFile
 
-from ingestion import VideoIngestionDeferred, create_processing_source, process_source
+from ingestion import create_processing_source, edit_source_content, process_source
 from services.account_service import current_account
 from services.retrieval import _sort_newest
 from storage import load_sources
@@ -58,6 +58,33 @@ def get_source(source_id: str) -> dict[str, Any]:
     raise HTTPException(status_code=404, detail="Source not found")
 
 
+@router.patch("/sources/{source_id}")
+async def update_source(source_id: str, request: Request) -> dict[str, Any]:
+    account = current_account()
+    payload = await request.json()
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="JSON body must be an object.")
+    content = str(payload.get("content") or "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Memory content is required.")
+
+    source = next(
+        (item for item in load_sources(account["id"]) if item.get("id") == source_id),
+        None,
+    )
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found")
+    if source.get("status") != "ready":
+        raise HTTPException(status_code=409, detail="Only ready memories can be edited.")
+
+    try:
+        return edit_source_content(source, content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @router.post("/sources")
 async def create_source(
     request: Request,
@@ -94,7 +121,5 @@ async def create_source(
             filename=filename,
         )
         return source
-    except VideoIngestionDeferred as exc:
-        raise HTTPException(status_code=501, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

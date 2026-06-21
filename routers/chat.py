@@ -15,6 +15,40 @@ from services.chat_service import run_agent
 
 router = APIRouter()
 
+MAX_CHAT_HISTORY_MESSAGES = 20
+MAX_CHAT_HISTORY_TEXT_LENGTH = 4000
+
+
+def _validated_history(payload: dict[str, Any]) -> list[dict[str, str]]:
+    raw_history = payload.get("history", [])
+    if raw_history is None:
+        return []
+    if not isinstance(raw_history, list):
+        raise HTTPException(status_code=400, detail="History must be a list.")
+
+    history: list[dict[str, str]] = []
+    for item in raw_history:
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=400, detail="History entries must be objects.")
+        role = item.get("role")
+        text = item.get("text")
+        if role not in {"user", "assistant"} or not isinstance(text, str):
+            raise HTTPException(
+                status_code=400,
+                detail="History entries must include role and text.",
+            )
+        cleaned_text = text.strip()
+        if not cleaned_text:
+            continue
+        history.append(
+            {
+                "role": role,
+                "text": cleaned_text[:MAX_CHAT_HISTORY_TEXT_LENGTH],
+            }
+        )
+
+    return history[-MAX_CHAT_HISTORY_MESSAGES:]
+
 
 @router.post("/chat")
 async def chat(request: Request) -> dict[str, Any]:
@@ -27,8 +61,11 @@ async def chat(request: Request) -> dict[str, Any]:
     message = str(payload.get("message") or "").strip()
     if not message:
         raise HTTPException(status_code=400, detail="Message is required.")
+    history = _validated_history(payload)
 
-    return await anyio.to_thread.run_sync(chat_response, account["id"], message)
+    return await anyio.to_thread.run_sync(
+        lambda: chat_response(account["id"], message, history=history)
+    )
 
 
 @router.post("/chat/stream")
@@ -40,6 +77,7 @@ async def chat_stream(request: Request) -> StreamingResponse:
     message = str(payload.get("message") or "").strip()
     if not message:
         raise HTTPException(status_code=400, detail="Message is required.")
+    history = _validated_history(payload)
 
     account_id = account["id"]
 
@@ -57,6 +95,7 @@ async def chat_stream(request: Request) -> StreamingResponse:
                 result = run_agent(
                     account_id,
                     message,
+                    history=history,
                     emit_event=emit,
                     stream_text=True,
                 )

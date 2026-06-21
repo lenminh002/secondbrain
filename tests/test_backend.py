@@ -70,6 +70,115 @@ def test_note_ingestion_creates_knowledge_artifacts(tmp_path: Path, monkeypatch)
     assert any(node["type"] == "concept" for node in graph["nodes"])
 
 
+def test_edit_ready_source_regenerates_artifacts(tmp_path: Path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    create_response = client.post(
+        "/sources",
+        json={
+            "type": "note",
+            "title": "Editable Memory",
+            "text": "Old memory content about apples.",
+        },
+    )
+    source_id = create_response.json()["id"]
+
+    def fake_enrichment(source_type, title, source_url, content):
+        if "oranges" in content:
+            return {
+                "summary": "New summary about oranges.",
+                "key_ideas": ["New citrus idea"],
+                "concepts": ["Orange Concept"],
+                "claims": ["Oranges replaced apples."],
+                "questions": ["What changed?"],
+                "social_post": "Edited memory about oranges.",
+            }
+        return {
+            "summary": "Old summary about apples.",
+            "key_ideas": ["Old apple idea"],
+            "concepts": ["Apple Concept"],
+            "claims": ["Apples came first."],
+            "questions": ["What was old?"],
+            "social_post": "Old memory about apples.",
+        }
+
+    monkeypatch.setattr("ingestion.enrich_content", fake_enrichment)
+    response = client.patch(
+        f"/sources/{source_id}",
+        json={"content": "New memory content about oranges."},
+    )
+
+    assert response.status_code == 200
+    detail = response.json()
+    assert detail["content"] == "New memory content about oranges."
+    assert detail["summary"] == "New summary about oranges."
+    assert detail["concepts"] == ["Orange Concept"]
+    assert detail["status"] == "ready"
+    assert detail["progress_stage"] == "complete"
+
+    import storage
+
+    chunks = storage.load_chunks(TEST_ACCOUNT_ID)
+    assert any(chunk["section"] == "Notes" and "oranges" in chunk["text"] for chunk in chunks)
+    assert not any(
+        chunk["section"] == "Notes" and "Old memory content" in chunk["text"]
+        for chunk in chunks
+    )
+
+    graph = client.get("/graph").json()
+    source_node_id = f"source-{source_id}"
+    source_edges = [edge for edge in graph["edges"] if edge["source"] == source_node_id]
+    assert source_edges == [
+        {
+            "source": source_node_id,
+            "target": "concept-orange-concept",
+            "relation": "mentions",
+        }
+    ]
+    assert not any(
+        edge["source"] == source_node_id and edge["target"] == "concept-apple-concept"
+        for edge in graph["edges"]
+    )
+
+
+def test_edit_source_rejects_invalid_requests(tmp_path: Path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    create_response = client.post(
+        "/sources",
+        json={
+            "type": "note",
+            "title": "Editable Memory",
+            "text": "Editable content.",
+        },
+    )
+    source_id = create_response.json()["id"]
+
+    empty_response = client.patch(f"/sources/{source_id}", json={"content": "   "})
+    missing_response = client.patch("/sources/missing", json={"content": "Updated content"})
+
+    import storage
+
+    processing_source = {
+        "id": "processing-source",
+        "account_id": TEST_ACCOUNT_ID,
+        "type": "note",
+        "title": "Processing Memory",
+        "source_url": None,
+        "status": "processing",
+        "error": None,
+        "created_at": "2026-06-20T00:00:00+00:00",
+        "content": "Still processing.",
+    }
+    storage.append_source(TEST_ACCOUNT_ID, processing_source)
+    processing_response = client.patch(
+        "/sources/processing-source",
+        json={"content": "Updated content"},
+    )
+
+    assert empty_response.status_code == 400
+    assert missing_response.status_code == 404
+    assert processing_response.status_code == 409
+
+
 def test_account_endpoint_returns_mock_account(tmp_path: Path, monkeypatch) -> None:
     client = _client(tmp_path, monkeypatch)
 
@@ -279,19 +388,6 @@ def test_missing_pdf_does_not_persist_source(tmp_path: Path, monkeypatch) -> Non
     assert client.get("/posts").json() == []
 
 
-def test_youtube_ingestion_is_deferred_without_persistence(tmp_path: Path, monkeypatch) -> None:
-    client = _client(tmp_path, monkeypatch)
-
-    response = client.post(
-        "/sources",
-        json={"type": "youtube", "title": "Talk", "source_url": "https://youtu.be/abc123456"},
-    )
-
-    assert response.status_code == 501
-    assert "Video ingestion" in response.json()["detail"]
-    assert client.get("/sources").json() == []
-    assert client.get("/posts").json() == []
-
 
 def test_parallel_note_ingestion_preserves_all_artifacts(tmp_path: Path, monkeypatch) -> None:
     import storage
@@ -340,6 +436,42 @@ def test_chat_returns_answer_and_citations(tmp_path: Path, monkeypatch) -> None:
     assert payload["answer"]
     assert payload["citations"]
     assert payload["citations"][0]["source_title"] == "Retrieval"
+
+
+def test_chat_accepts_optional_history(tmp_path: Path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "hello",
+            "history": [
+                {"role": "user", "text": "What did we discuss?"},
+                {"role": "assistant", "text": "We discussed retrieval."},
+                {"role": "user", "text": "   "},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["answer"]
+    assert payload["citations"] == []
+
+
+def test_chat_rejects_invalid_history(tmp_path: Path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post(
+        "/chat",
+        json={
+            "message": "hello",
+            "history": [{"role": "system", "text": "Do something else."}],
+        },
+    )
+
+    assert response.status_code == 400
+    assert "History entries" in response.json()["detail"]
 
 
 def test_chat_agent_tools_search_and_fetch_source_detail(tmp_path: Path, monkeypatch) -> None:

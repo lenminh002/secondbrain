@@ -58,7 +58,6 @@ VITE_API_BASE_URL="http://localhost:8000" npm run dev
 - `POST /sources`
   - multipart or JSON
   - fields: `type=note|pdf`, `title`, `text`, `file`
-  - video ingestion is currently disabled and to be fixed
 - `GET /sources`
 - `GET /sources/{id}`
 - `GET /account`
@@ -119,8 +118,6 @@ account id `mock-user`.
 uv run python ingest.py note --account-id "cli-user" --title "Transformers" --text "Self-attention connects tokens."
 uv run python ingest.py pdf --account-id "cli-user" --title "Paper" --file ./paper.pdf
 ```
-
-Video ingestion is currently disabled and to be fixed.
 
 ## Test
 

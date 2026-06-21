@@ -27,6 +27,7 @@ export default function App() {
     selectedSourceId,
     setSelectedSourceId,
     selectedSourceDetail,
+    setSelectedSourceDetail,
     notice,
     setNotice,
     refresh,
@@ -40,8 +41,6 @@ export default function App() {
     setTitle,
     noteText,
     setNoteText,
-    youtubeUrl,
-    setYoutubeUrl,
     pdfFile,
     setPdfFile,
     isSubmitting,
@@ -63,7 +62,11 @@ export default function App() {
     isChatMinimized,
     setIsChatMinimized,
     submitChat,
-  } = useChatSession();
+    clearChatHistory,
+    archiveAndClearChatHistory,
+    isArchivingChat,
+    chatArchiveError,
+  } = useChatSession({ onArchiveComplete: refresh });
 
   const sourcesByType = useMemo(() => {
     return sources.reduce<Record<SourceType, SourceRecord[]>>(
@@ -71,7 +74,7 @@ export default function App() {
         groups[source.type].push(source);
         return groups;
       },
-      { note: [], pdf: [], youtube: [] },
+      { note: [], pdf: [] },
     );
   }, [sources]);
 
@@ -88,6 +91,10 @@ export default function App() {
       isChatting={isChatting}
       setChatInput={setChatInput}
       submitChat={submitChat}
+      clearChatHistory={clearChatHistory}
+      archiveChatHistory={archiveAndClearChatHistory}
+      isArchivingChat={isArchivingChat}
+      chatArchiveError={chatArchiveError}
       isMinimized={isChatMinimized}
       toggleMinimize={() => setIsChatMinimized((v) => !v)}
     />
@@ -134,10 +141,8 @@ export default function App() {
               setNoteText={setNoteText}
               setPdfFile={setPdfFile}
               setTitle={setTitle}
-              setYoutubeUrl={setYoutubeUrl}
               submitSource={submitSource}
               title={title}
-              youtubeUrl={youtubeUrl}
             />
           ) : activeView === "chat" ? (
             <div className="h-[calc(100vh-74px)]">
@@ -147,6 +152,10 @@ export default function App() {
                 isChatting={isChatting}
                 setChatInput={setChatInput}
                 submitChat={submitChat}
+                clearChatHistory={clearChatHistory}
+                archiveChatHistory={archiveAndClearChatHistory}
+                isArchivingChat={isArchivingChat}
+                chatArchiveError={chatArchiveError}
               />
             </div>
           ) : (
@@ -157,11 +166,13 @@ export default function App() {
               notesMode={notesMode}
               notice={notice}
               readyCount={readyCount}
-              refreshGraph={refreshWithNotice}
+              refreshKnowledge={refresh}
               selectedSourceDetail={selectedSourceDetail}
               selectedSourceId={selectedSourceId}
+              setNotice={setNotice}
               setNotesMode={setNotesMode}
               setSelectedSourceId={setSelectedSourceId}
+              setSelectedSourceDetail={setSelectedSourceDetail}
               sourcesByType={sourcesByType}
             />
           )}

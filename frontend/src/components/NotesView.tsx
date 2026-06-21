@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { BookOpen, Bot, FileText, GitBranch, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BookOpen, Bot, FileText, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { GraphView } from "@/components/GraphView";
 import { SourceContent } from "@/components/SourceContent";
@@ -10,8 +10,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { updateSourceContent } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { formatDate } from "@/lib/format";
+import { errorMessage, formatDate } from "@/lib/format";
 import type { KnowledgeGraph, NotesMode, SourceDetail, SourceRecord, SourceType } from "@/types";
 
 export function NotesView({
@@ -21,11 +22,13 @@ export function NotesView({
   notesMode,
   notice,
   readyCount,
-  refreshGraph,
+  refreshKnowledge,
   selectedSourceDetail,
   selectedSourceId,
+  setNotice,
   setNotesMode,
   setSelectedSourceId,
+  setSelectedSourceDetail,
   sourcesByType,
 }: {
   chatPanel: React.ReactNode;
@@ -34,14 +37,60 @@ export function NotesView({
   notesMode: NotesMode;
   notice: string;
   readyCount: number;
-  refreshGraph: () => void;
+  refreshKnowledge: () => Promise<void>;
   selectedSourceDetail: SourceDetail | null;
   selectedSourceId: string | null;
+  setNotice: (notice: string) => void;
   setNotesMode: (mode: NotesMode) => void;
   setSelectedSourceId: (id: string) => void;
+  setSelectedSourceDetail: (source: SourceDetail) => void;
   sourcesByType: Record<SourceType, SourceRecord[]>;
 }) {
   const [isVaultMinimized, setIsVaultMinimized] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [draftContent, setDraftContent] = useState("");
+
+  const selectedContent = selectedSourceDetail?.content ?? "";
+  const canEdit = selectedSourceDetail?.status === "ready";
+  const saveDisabled = (
+    isSaving
+    || !draftContent.trim()
+    || draftContent.trim() === selectedContent.trim()
+  );
+
+  useEffect(() => {
+    setIsEditing(false);
+    setIsSaving(false);
+    setDraftContent(selectedSourceDetail?.content ?? "");
+  }, [selectedSourceDetail?.id]);
+
+  function startEditing() {
+    setDraftContent(selectedContent);
+    setIsEditing(true);
+  }
+
+  function cancelEditing() {
+    setDraftContent(selectedContent);
+    setIsEditing(false);
+  }
+
+  async function saveEdit() {
+    if (!selectedSourceDetail || saveDisabled) return;
+    setIsSaving(true);
+    try {
+      const updatedSource = await updateSourceContent(selectedSourceDetail.id, draftContent);
+      setSelectedSourceDetail(updatedSource);
+      await refreshKnowledge();
+      setNotice("");
+      setIsEditing(false);
+      setDraftContent(updatedSource.content ?? "");
+    } catch (error: unknown) {
+      setNotice(errorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <main className="min-h-[calc(100vh-74px)] min-w-0 border-r @container">
@@ -103,7 +152,7 @@ export function NotesView({
                       Vault
                     </div>
                     <div className="space-y-4">
-                      {(["note", "pdf", "youtube"] as const).map((type) => (
+                      {(["note", "pdf"] as const).map((type) => (
                         <div key={type}>
                           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{type}</div>
                           <div className="space-y-1">
@@ -154,7 +203,7 @@ export function NotesView({
                     </div>
 
                   </div>
-                  <GraphView graph={graph} onRefresh={refreshGraph} />
+                  <GraphView graph={graph} onRefresh={() => { void refreshKnowledge(); }} />
                 </div>
               ) : selectedSourceDetail ? (
                 <Card>
@@ -166,13 +215,47 @@ export function NotesView({
                           {selectedSourceDetail.type} · {formatDate(selectedSourceDetail.created_at)}
                         </CardDescription>
                       </div>
-                      <StatusBadge status={selectedSourceDetail.status} />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge status={selectedSourceDetail.status} />
+                        {isEditing ? (
+                          <>
+                            <Button
+                              disabled={isSaving}
+                              onClick={cancelEditing}
+                              size="sm"
+                              type="button"
+                              variant="outline"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              disabled={saveDisabled}
+                              onClick={() => { void saveEdit(); }}
+                              size="sm"
+                              type="button"
+                            >
+                              {isSaving ? "Saving..." : "Save"}
+                            </Button>
+                          </>
+                        ) : canEdit ? (
+                          <Button onClick={startEditing} size="sm" type="button" variant="outline">
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
                     {selectedSourceDetail.error && <p className="text-sm text-destructive break-words">{selectedSourceDetail.error}</p>}
                   </CardHeader>
                   <Separator />
                   <CardContent className="pt-5">
-                    <SourceContent source={selectedSourceDetail} />
+                    <SourceContent
+                      draftContent={draftContent}
+                      isEditing={isEditing}
+                      isSaving={isSaving}
+                      onDraftContentChange={setDraftContent}
+                      source={selectedSourceDetail}
+                    />
                   </CardContent>
                 </Card>
               ) : (

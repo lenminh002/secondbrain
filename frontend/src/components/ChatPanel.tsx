@@ -1,7 +1,7 @@
 import { FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Bot, GitBranch, Loader2, MessageCircle, ChevronRight, ChevronLeft } from "lucide-react";
+import { Archive, Bot, GitBranch, Loader2, MessageCircle, ChevronRight, ChevronLeft } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,10 @@ export function ChatPanel({
   isChatting,
   setChatInput,
   submitChat,
+  clearChatHistory,
+  archiveChatHistory,
+  isArchivingChat = false,
+  chatArchiveError = "",
   isMinimized,
   toggleMinimize,
 }: {
@@ -25,9 +29,15 @@ export function ChatPanel({
   isChatting: boolean;
   setChatInput: (value: string) => void;
   submitChat: (event: FormEvent<HTMLFormElement>) => void;
+  clearChatHistory?: () => void;
+  archiveChatHistory?: () => void;
+  isArchivingChat?: boolean;
+  chatArchiveError?: string;
   isMinimized?: boolean;
   toggleMinimize?: () => void;
 }) {
+  const hasCompletedMessages = chatLog.some((message) => !message.isStreaming && message.text.trim());
+
   if (isMinimized) {
     return (
       <Card className="flex h-full min-h-0 flex-col rounded-none border-0 border-l shadow-none lg:rounded-none bg-muted/20 items-center py-4">
@@ -43,18 +53,50 @@ export function ChatPanel({
 
   return (
     <Card className="flex h-full min-h-0 flex-col rounded-none border-0 border-l shadow-none lg:rounded-none relative">
-      <CardHeader className="border-b pr-14">
-        <div className="flex items-center gap-2">
-          <Bot className="h-5 w-5" />
-          <CardTitle>The Librarian</CardTitle>
+      <CardHeader className={cn("border-b", toggleMinimize && "pr-14")}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              <CardTitle>The Librarian</CardTitle>
+            </div>
+            <CardDescription>Ask across notes, graph nodes, and generated posts.</CardDescription>
+          </div>
+          {archiveChatHistory && (
+            <Button
+              className="h-8 shrink-0 px-2 text-xs"
+              disabled={!hasCompletedMessages || isChatting || isArchivingChat}
+              onClick={archiveChatHistory}
+              type="button"
+              variant="outline"
+            >
+              {isArchivingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+              {isArchivingChat ? "Archiving..." : "Archive & Clear"}
+            </Button>
+          )}
+          {!archiveChatHistory && clearChatHistory && (
+            <Button
+              className="h-8 shrink-0 px-2 text-xs"
+              disabled={!hasCompletedMessages || isChatting}
+              onClick={clearChatHistory}
+              type="button"
+              variant="outline"
+            >
+              Clear
+            </Button>
+          )}
         </div>
-        <CardDescription>Ask across notes, graph nodes, and generated posts.</CardDescription>
         {toggleMinimize && (
           <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={toggleMinimize}>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </Button>
         )}
       </CardHeader>
+      {chatArchiveError && (
+        <div className="border-b border-destructive/20 bg-destructive/5 px-4 py-2 text-xs text-destructive">
+          {chatArchiveError}
+        </div>
+      )}
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-3 p-4">
           {chatLog.length ? (
@@ -154,8 +196,13 @@ export function ChatPanel({
         </div>
       </ScrollArea>
       <form className="flex gap-2 border-t p-4" onSubmit={submitChat}>
-        <Input value={chatInput} onChange={(event) => setChatInput(event.target.value)} placeholder="Ask your KB..." />
-        <Button disabled={isChatting} type="submit">
+        <Input
+          disabled={isArchivingChat}
+          value={chatInput}
+          onChange={(event) => setChatInput(event.target.value)}
+          placeholder="Ask your KB..."
+        />
+        <Button disabled={isChatting || isArchivingChat} type="submit">
           {isChatting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
         </Button>
       </form>

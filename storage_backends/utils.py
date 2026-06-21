@@ -29,13 +29,18 @@ def merge_graph(
     nodes = graph.get("nodes") if isinstance(graph.get("nodes"), list) else []
     edges = graph.get("edges") if isinstance(graph.get("edges"), list) else []
     nodes_by_id = {node.get("id"): node for node in nodes if isinstance(node, dict)}
+    source_node_id = f"source-{source['id']}"
+    edges = [
+        edge
+        for edge in edges
+        if not (isinstance(edge, dict) and edge.get("source") == source_node_id)
+    ]
     edge_keys = {
         (edge.get("source"), edge.get("target"), edge.get("relation"))
         for edge in edges
         if isinstance(edge, dict)
     }
 
-    source_node_id = f"source-{source['id']}"
     nodes_by_id[source_node_id] = {
         "id": source_node_id,
         "label": source["title"],

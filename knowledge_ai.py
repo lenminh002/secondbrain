@@ -10,6 +10,8 @@ from anthropic import Anthropic
 
 MODEL_NAME = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 MAX_AGENT_TURNS = 3
+MAX_PROMPT_HISTORY_MESSAGES = 20
+MAX_PROMPT_HISTORY_TEXT_LENGTH = 4000
 
 CHAT_TOOLS = [
     {
@@ -180,6 +182,7 @@ def answer_with_context(
     message: str,
     chunks: list[dict[str, Any]],
     graph_context: list[dict[str, Any]] | None = None,
+    history: list[dict[str, str]] | None = None,
 ) -> str:
     context = "\n\n".join(
         f"[{index + 1}] {chunk.get('source_title', 'Untitled')} / {chunk.get('section', 'Notes')}\n{chunk.get('text', '')}"
@@ -201,6 +204,9 @@ def answer_with_context(
     prompt = f"""
 You are a personal assistant that answers only from the user's saved knowledge base.
 If the context is insufficient, say what is missing. Cite sources inline like [1].
+
+Conversation history:
+{_format_chat_history(history) or "No prior conversation."}
 
 User question:
 {message}
@@ -241,14 +247,42 @@ def _text_from_content(content: Any) -> str:
     ).strip()
 
 
+def _format_chat_history(history: list[dict[str, str]] | None) -> str:
+    lines: list[str] = []
+    for item in (history or [])[-MAX_PROMPT_HISTORY_MESSAGES:]:
+        role = item.get("role")
+        text = str(item.get("text") or "").strip()
+        if role not in {"user", "assistant"} or not text:
+            continue
+        label = "User" if role == "user" else "Assistant"
+        lines.append(f"{label}: {text[:MAX_PROMPT_HISTORY_TEXT_LENGTH]}")
+    return "\n".join(lines)
+
+
+def _message_with_history(message: str, history: list[dict[str, str]] | None) -> str:
+    history_text = _format_chat_history(history)
+    if not history_text:
+        return message
+    return f"""
+Conversation history:
+{history_text}
+
+Current user message:
+{message}
+""".strip()
+
+
 def answer_with_tools(
     message: str,
     execute_tool: Callable[[str, dict[str, Any]], dict[str, Any]],
+    history: list[dict[str, str]] | None = None,
 ) -> tuple[str, list[str]]:
     client = _client()
     if client is None:
         raise ValueError("ANTHROPIC_API_KEY is required for tool-based answers.")
-    messages: list[dict[str, Any]] = [{"role": "user", "content": message}]
+    messages: list[dict[str, Any]] = [
+        {"role": "user", "content": _message_with_history(message, history)}
+    ]
     used_tools: list[str] = []
     system = """
 You are a personal knowledge assistant. For simple greetings or conversational messages
@@ -328,6 +362,7 @@ If the saved context is insufficient, say what is missing.
 def stream_with_tools(
     message: str,
     execute_tool: Callable[[str, dict[str, Any]], dict[str, Any]],
+    history: list[dict[str, str]] | None = None,
 ) -> Generator[dict[str, Any], None, None]:
     """Stream the AI response token-by-token via a generator of SSE-compatible dicts.
 
@@ -340,7 +375,9 @@ def stream_with_tools(
     if client is None:
         raise ValueError("ANTHROPIC_API_KEY is required for streaming.")
 
-    messages: list[dict[str, Any]] = [{"role": "user", "content": message}]
+    messages: list[dict[str, Any]] = [
+        {"role": "user", "content": _message_with_history(message, history)}
+    ]
     system = """
 You are a personal knowledge assistant. For simple greetings or conversational messages
 (e.g. "hello", "thanks", "how are you"), respond naturally without searching.

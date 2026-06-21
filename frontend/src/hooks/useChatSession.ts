@@ -1,20 +1,113 @@
-import { FormEvent, useState } from "react";
-import { streamChatMessage } from "@/lib/api";
+import { FormEvent, useEffect, useState } from "react";
+import { archiveChatSession, streamChatMessage } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
-import type { ChatMessage } from "@/types";
+import type { ChatHistoryMessage, ChatMessage, SourceDetail } from "@/types";
 
-export function useChatSession() {
+const CHAT_HISTORY_STORAGE_KEY = "skywatch.chat.history.v1";
+const MAX_CLIENT_HISTORY_MESSAGES = 20;
+
+function normalizeChatMessages(value: unknown): ChatMessage[] {
+  if (!Array.isArray(value)) return [];
+  return value.reduce<ChatMessage[]>((messages, item) => {
+    if (!item || typeof item !== "object") return messages;
+    const message = item as Partial<ChatMessage>;
+    if (message.role !== "user" && message.role !== "assistant") return messages;
+    const text = typeof message.text === "string" ? message.text : "";
+    if (!text.trim()) return messages;
+    messages.push({
+      ...message,
+      role: message.role,
+      text,
+      isStreaming: false,
+    });
+    return messages;
+  }, []);
+}
+
+function loadStoredChatLog(): ChatMessage[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = window.localStorage.getItem(CHAT_HISTORY_STORAGE_KEY);
+    if (!stored) return [];
+    return normalizeChatMessages(JSON.parse(stored));
+  } catch {
+    return [];
+  }
+}
+
+function messagesForStorage(messages: ChatMessage[]): ChatMessage[] {
+  return messages
+    .filter((message) => !message.isStreaming && message.text.trim())
+    .map((message) => {
+      const storedMessage = { ...message };
+      delete storedMessage.isStreaming;
+      return storedMessage;
+    });
+}
+
+function messagesForRequestHistory(messages: ChatMessage[]): ChatHistoryMessage[] {
+  return messagesForStorage(messages)
+    .slice(-MAX_CLIENT_HISTORY_MESSAGES)
+    .map(({ role, text }) => ({ role, text }));
+}
+
+export function useChatSession({
+  onArchiveComplete,
+}: {
+  onArchiveComplete?: (source: SourceDetail) => Promise<void> | void;
+} = {}) {
   const [chatInput, setChatInput] = useState("");
-  const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
+  const [chatLog, setChatLog] = useState<ChatMessage[]>(loadStoredChatLog);
   const [isChatting, setIsChatting] = useState(false);
+  const [isArchivingChat, setIsArchivingChat] = useState(false);
+  const [chatArchiveError, setChatArchiveError] = useState("");
   const [isChatMinimized, setIsChatMinimized] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedMessages = messagesForStorage(chatLog);
+    if (!storedMessages.length) {
+      window.localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
+      return;
+    }
+    window.localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(storedMessages));
+  }, [chatLog]);
+
+  function clearChatHistory() {
+    setChatInput("");
+    setChatLog([]);
+    setChatArchiveError("");
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
+    }
+  }
+
+  async function archiveAndClearChatHistory() {
+    if (isChatting || isArchivingChat) return;
+    const messagesToArchive = messagesForStorage(chatLog);
+    if (!messagesToArchive.length) return;
+
+    setIsArchivingChat(true);
+    setChatArchiveError("");
+    try {
+      const archivedSource = await archiveChatSession(messagesToArchive);
+      await onArchiveComplete?.(archivedSource);
+      clearChatHistory();
+    } catch (error: unknown) {
+      setChatArchiveError(errorMessage(error));
+    } finally {
+      setIsArchivingChat(false);
+    }
+  }
 
   async function submitChat(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = chatInput.trim();
-    if (!message || isChatting) return;
+    if (!message || isChatting || isArchivingChat) return;
+    const history = messagesForRequestHistory(chatLog);
     setChatInput("");
     setIsChatting(true);
+    setChatArchiveError("");
 
     // Add user message + placeholder assistant message immediately.
     setChatLog((current) => [
@@ -88,7 +181,7 @@ export function useChatSession() {
             return updated;
           });
         },
-      });
+      }, history);
     } catch (error: unknown) {
       setChatLog((current) => {
         const updated = [...current];
@@ -108,7 +201,11 @@ export function useChatSession() {
     setChatInput,
     chatLog,
     setChatLog,
+    clearChatHistory,
+    archiveAndClearChatHistory,
     isChatting,
+    isArchivingChat,
+    chatArchiveError,
     isChatMinimized,
     setIsChatMinimized,
     submitChat,

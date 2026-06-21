@@ -1,4 +1,4 @@
-export type SourceType = "note" | "pdf" | "youtube";
+export type SourceType = "note" | "pdf";
 export type SourceStatus = "processing" | "ready" | "failed";
 export type ActiveView = "home" | "notes" | "ingest" | "chat";
 export type NotesMode = "note" | "graph";
@@ -160,6 +160,8 @@ export type ChatMessage = {
   agentTrace?: AgentTraceStep[];
   isStreaming?: boolean;
 };
+
+export type ChatHistoryMessage = Pick<ChatMessage, "role" | "text">;
 
 export type ApiError = {
   detail?: string;

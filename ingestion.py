@@ -14,9 +14,7 @@ from storage import (
     save_source_result,
 )
 
-SOURCE_TYPES = {"note", "pdf", "youtube"}
-ACTIVE_SOURCE_TYPES = {"note", "pdf"}
-VIDEO_DEFERRED_MESSAGE = "Video ingestion is currently disabled and to be fixed."
+SOURCE_TYPES = {"note", "pdf"}
 INGEST_PROGRESS: dict[str, tuple[str, int]] = {
     "validating": ("Validating source", 5),
     "uploading": ("Uploading original PDF", 15),
@@ -38,10 +36,6 @@ ProgressStage = Literal[
     "graphing",
     "complete",
 ]
-
-
-class VideoIngestionDeferred(ValueError):
-    pass
 
 
 def now_iso() -> str:
@@ -140,10 +134,6 @@ def validate_source_input(
     file_bytes: bytes | None = None,
 ) -> None:
     if source_type not in SOURCE_TYPES:
-        raise ValueError("Source type must be one of note, pdf, or youtube.")
-    if source_type == "youtube":
-        raise VideoIngestionDeferred(VIDEO_DEFERRED_MESSAGE)
-    if source_type not in ACTIVE_SOURCE_TYPES:
         raise ValueError("Source type must be note or pdf.")
     if source_type == "note" and not (text or "").strip():
         raise ValueError("Note text is required.")
@@ -229,6 +219,36 @@ def process_source(
         source["error"] = str(exc)
         save_source_result(account_id, source)
 
+    return source
+
+
+def edit_source_content(source: dict[str, Any], content: str) -> dict[str, Any]:
+    content = content.strip()
+    if not content:
+        raise ValueError("Memory content is required.")
+    if source.get("status") != "ready":
+        raise RuntimeError("Only ready memories can be edited.")
+
+    source_type = str(source["type"])
+    source["error"] = None
+    _set_progress(source, "enriching")
+    enrichment = enrich_content(
+        source_type,
+        str(source.get("title") or "Untitled source"),
+        source.get("source_url"),
+        content,
+    )
+
+    source["content"] = content
+    source["summary"] = enrichment["summary"]
+    source["key_ideas"] = enrichment["key_ideas"]
+    source["concepts"] = enrichment["concepts"]
+    source["claims"] = enrichment["claims"]
+    source["questions"] = enrichment["questions"]
+
+    _replace_source_artifacts(source, content, enrichment)
+    source["status"] = "ready"
+    _set_progress(source, "complete")
     return source
 
 
