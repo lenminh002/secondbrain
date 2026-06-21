@@ -14,7 +14,28 @@ import { useSourceIngestion } from "@/hooks/useSourceIngestion";
 import { useChatSession } from "@/hooks/useChatSession";
 import type { ActiveView, NotesMode, SourceRecord, SourceType } from "@/types";
 
+import { useAuth } from "@/hooks/useAuth";
+import { LoginView } from "@/components/LoginView";
+
 export default function App() {
+  const { user, loading, loginWithGoogle } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#0d0f14]">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginView onLogin={loginWithGoogle} />;
+  }
+
+  return <AuthenticatedApp />;
+}
+
+function AuthenticatedApp() {
   const [activeView, setActiveView] = useState<ActiveView>("home");
   const [notesMode, setNotesMode] = useState<NotesMode>("note");
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(true);

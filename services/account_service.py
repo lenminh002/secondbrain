@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import contextvars
 from typing import Any
 
 from storage import get_account as storage_get_account
 from storage import load_sources, upsert_account
 from storage import save_source_result
+
+
+_CURRENT_ACCOUNT_VAR: contextvars.ContextVar[dict[str, str] | None] = contextvars.ContextVar(
+    "current_account", default=None
+)
 
 
 MOCK_ACCOUNT: dict[str, str] = {
@@ -18,6 +24,11 @@ MOCK_ACCOUNT: dict[str, str] = {
 
 
 def current_account() -> dict[str, str]:
+    # Check if a request-scoped account is set in the context variable
+    account = _CURRENT_ACCOUNT_VAR.get()
+    if account is not None:
+        return account
+
     # Read first; only write when the account doesn't exist yet.  Calling
     # upsert_account on every request caused an unnecessary write (get + set)
     # on every single endpoint hit when using the Firestore backend.

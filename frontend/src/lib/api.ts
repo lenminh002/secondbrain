@@ -1,8 +1,27 @@
 import type { AccountRecord, AgentTraceStep, ApiError, ChatHistoryMessage, ChatMessage, Citation, GraphContext, KnowledgeGraph, PostRecord, SourceDetail, SourceRecord, ToolCall } from "@/types";
+import { auth } from "@/lib/firebase";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 const ARCHIVE_POLL_INTERVAL_MS = 750;
 const ARCHIVE_MAX_POLLS = 120;
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const user = auth.currentUser;
+  if (user) {
+    const token = await user.getIdToken();
+    return { "Authorization": `Bearer ${token}` };
+  }
+  return {};
+}
+
+async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const authHeaders = await getAuthHeaders();
+  const headers = {
+    ...options.headers,
+    ...authHeaders,
+  };
+  return fetch(url, { ...options, headers });
+}
 
 async function responseError(response: Response, fallback: string) {
   try {
@@ -15,10 +34,10 @@ async function responseError(response: Response, fallback: string) {
 
 export async function fetchKnowledgeData() {
   const [accountResponse, sourceResponse, postResponse, graphResponse] = await Promise.all([
-    fetch(`${API_BASE_URL}/account`),
-    fetch(`${API_BASE_URL}/sources`),
-    fetch(`${API_BASE_URL}/posts`),
-    fetch(`${API_BASE_URL}/graph`),
+    authFetch(`${API_BASE_URL}/account`),
+    authFetch(`${API_BASE_URL}/sources`),
+    authFetch(`${API_BASE_URL}/posts`),
+    authFetch(`${API_BASE_URL}/graph`),
   ]);
 
   const failedResponse = [accountResponse, sourceResponse, postResponse, graphResponse].find(
@@ -37,13 +56,13 @@ export async function fetchKnowledgeData() {
 }
 
 export async function fetchSourceDetail(sourceId: string) {
-  const response = await fetch(`${API_BASE_URL}/sources/${sourceId}`);
+  const response = await authFetch(`${API_BASE_URL}/sources/${sourceId}`);
   if (!response.ok) throw await responseError(response, "Source detail failed to load.");
   return (await response.json()) as SourceDetail;
 }
 
 export async function updateSourceContent(sourceId: string, content: string) {
-  const response = await fetch(`${API_BASE_URL}/sources/${sourceId}`, {
+  const response = await authFetch(`${API_BASE_URL}/sources/${sourceId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
@@ -53,7 +72,7 @@ export async function updateSourceContent(sourceId: string, content: string) {
 }
 
 export async function createSource(formData: FormData) {
-  const response = await fetch(`${API_BASE_URL}/sources`, {
+  const response = await authFetch(`${API_BASE_URL}/sources`, {
     method: "POST",
     body: formData,
   });
@@ -144,7 +163,7 @@ export async function archiveChatSession(messages: ChatMessage[]) {
 }
 
 export async function sendChatMessage(message: string, history: ChatHistoryMessage[] = []) {
-  const response = await fetch(`${API_BASE_URL}/chat`, {
+  const response = await authFetch(`${API_BASE_URL}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, history }),
@@ -178,7 +197,7 @@ export async function streamChatMessage(
   callbacks: StreamChatCallbacks,
   history: ChatHistoryMessage[] = [],
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/chat/stream`, {
+  const response = await authFetch(`${API_BASE_URL}/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, history }),

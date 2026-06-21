@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 
 from services.account_service import cleanup_stuck_processing_sources
+from services.auth_middleware import FirebaseAuthMiddleware
 from routers import chat, misc, sources
 from embeddings import embed_text
 from services.chat.llm import answer_with_tools
@@ -30,6 +31,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(FirebaseAuthMiddleware)
 
 app.include_router(sources.router)
 app.include_router(chat.router)
