@@ -39,6 +39,7 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
   const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
   const [isChatting, setIsChatting] = useState(false);
+  const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
 
   async function refresh() {
     const data = await fetchKnowledgeData();
@@ -166,8 +167,11 @@ export default function App() {
     <TooltipProvider>
       <div className="app-frame pb-20 lg:pb-0">
         <TopBar account={account} />
-        <div className={activeView === "home" || activeView === "profile" ? "social-grid" : activeView === "digest" ? "digest-grid" : "notes-grid"}>
-          <SidebarNav account={account} activeView={activeView} notesMode={notesMode} setActiveView={setActiveView} setNotesMode={setNotesMode} />
+        <div
+            className={activeView === "home" || activeView === "profile" ? "social-grid" : activeView === "digest" ? "digest-grid" : "notes-grid"}
+            style={{ ["--sidebar-width" as string]: isSidebarMinimized ? "72px" : "260px" }}
+          >
+          <SidebarNav account={account} activeView={activeView} notesMode={notesMode} setActiveView={setActiveView} setNotesMode={setNotesMode} isMinimized={isSidebarMinimized} toggleMinimize={() => setIsSidebarMinimized((v) => !v)} />
 
           {activeView === "home" ? (
             <HomeView account={account} notice={notice} posts={accountPosts} refresh={refreshWithNotice} setActiveView={setActiveView} />

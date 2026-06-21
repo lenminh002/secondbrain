@@ -186,16 +186,17 @@ export function GraphView({
     });
   }
 
-  function zoomBy(delta: number) {
+  function zoomBy(factor: number) {
     setTransform((current) => ({
       ...current,
-      scale: Math.min(2.4, Math.max(0.35, current.scale + delta)),
+      scale: Math.min(2.4, Math.max(0.35, current.scale * factor)),
     }));
   }
 
   function onWheel(event: WheelEvent<SVGSVGElement>) {
     event.preventDefault();
-    zoomBy(event.deltaY > 0 ? -0.08 : 0.08);
+    // Zoom by 2% per wheel tick for a slower, smoother interaction
+    zoomBy(event.deltaY > 0 ? 0.98 : 1.02);
   }
 
   function onPointerDown(event: PointerEvent<SVGSVGElement>) {
@@ -323,10 +324,10 @@ export function GraphView({
             Refresh
           </Button>
           <Button onClick={fitGraph} size="sm" variant="outline">Fit Graph</Button>
-          <Button onClick={() => zoomBy(0.12)} size="icon" variant="outline">
+          <Button onClick={() => zoomBy(1.06)} size="icon" variant="outline">
             <ZoomIn className="h-4 w-4" />
           </Button>
-          <Button onClick={() => zoomBy(-0.12)} size="icon" variant="outline">
+          <Button onClick={() => zoomBy(0.94)} size="icon" variant="outline">
             <ZoomOut className="h-4 w-4" />
           </Button>
           <Button onClick={resetView} size="icon" variant="outline">

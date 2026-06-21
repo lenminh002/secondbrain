@@ -186,7 +186,7 @@ button:disabled,
   text-anchor: middle;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1023px) {
   .social-grid,
   .notes-grid,
   .digest-grid {

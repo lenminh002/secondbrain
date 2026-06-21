@@ -41,7 +41,7 @@ export function NotesView({
   sourcesByType: Record<SourceType, SourceRecord[]>;
 }) {
   return (
-    <main className="min-h-[calc(100vh-74px)] border-r">
+    <main className="min-h-[calc(100vh-74px)] border-r @container">
       <div className="flex h-14 items-center justify-between border-b px-5">
         <div>
           <h1 className="font-bold">Notes</h1>
@@ -70,9 +70,9 @@ export function NotesView({
         </div>
       </div>
 
-      <div className="grid min-h-[calc(100vh-128px)] grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="border-b bg-muted/20 xl:border-b-0 xl:border-r">
-          <ScrollArea className="h-[320px] xl:h-[calc(100vh-128px)]">
+      <div className="grid h-[calc(100vh-128px)] grid-cols-1 @2xl:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="min-h-0 border-b bg-muted/20 @2xl:border-b-0 @2xl:border-r">
+          <ScrollArea className="h-full max-h-[320px] @2xl:max-h-none">
             <div className="space-y-5 p-4">
               <div>
                 <div className="mb-2 flex items-center gap-2 text-sm font-bold">
@@ -114,8 +114,8 @@ export function NotesView({
           </ScrollArea>
         </aside>
 
-        <section className="min-w-0">
-          <ScrollArea className="h-[calc(100vh-128px)]">
+        <section className="min-h-0 min-w-0">
+          <ScrollArea className="h-full">
             <div className="mx-auto max-w-4xl p-5">
               {notice && <div className="mb-4 rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">{notice}</div>}
               {notesMode === "graph" ? (
