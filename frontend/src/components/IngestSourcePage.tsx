@@ -16,7 +16,7 @@ function sourceTypeLabel(type: SourceType) {
   return "Note";
 }
 
-export function DigestSourcePage({
+export function IngestSourcePage({
   activeType,
   ingestProgress,
   isSubmitting,
@@ -57,7 +57,7 @@ export function DigestSourcePage({
     <main className="min-h-[calc(100vh-74px)] border-r">
       <div className="flex h-14 items-center justify-between border-b px-6">
         <div>
-          <h1 className="font-bold">Digest Source</h1>
+          <h1 className="font-bold">Ingest Source</h1>
           <p className="text-xs text-muted-foreground">Turn notes, papers, and videos into structured memory.</p>
         </div>
         <Badge variant="secondary">
@@ -74,31 +74,31 @@ export function DigestSourcePage({
                 Add to your knowledge base
               </CardTitle>
               <CardDescription>
-                The digest pipeline creates structured source records, generated posts, chunks, embeddings, and graph nodes.
+                The ingest pipeline creates structured source records, generated posts, chunks, embeddings, and graph nodes.
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-5">
               <form className="space-y-5" onSubmit={submitSource}>
-                  <Tabs value={activeType} onValueChange={(value) => { if (!isSubmitting) setActiveType(value as SourceType); }}>
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger disabled={isSubmitting} value="note">Note</TabsTrigger>
-                      <TabsTrigger disabled={isSubmitting} value="pdf">PDF</TabsTrigger>
-                      <TabsTrigger disabled value="youtube">Video</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                  <p className="text-xs text-muted-foreground">Video ingestion to be fixed.</p>
+                <Tabs value={activeType} onValueChange={(value) => { if (!isSubmitting) setActiveType(value as SourceType); }}>
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger disabled={isSubmitting} value="note">Note</TabsTrigger>
+                    <TabsTrigger disabled={isSubmitting} value="pdf">PDF</TabsTrigger>
+                    <TabsTrigger disabled value="youtube">Video</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <p className="text-xs text-muted-foreground">Video ingestion to be fixed.</p>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold" htmlFor="digest-title">Title</label>
-                  <Input disabled={isSubmitting} id="digest-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Research paper, lecture, book chapter..." />
+                  <label className="text-sm font-semibold" htmlFor="ingest-title">Title</label>
+                  <Input disabled={isSubmitting} id="ingest-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Research paper, lecture, book chapter..." />
                 </div>
 
                 {activeType === "note" && (
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold" htmlFor="digest-note">Notes</label>
+                    <label className="text-sm font-semibold" htmlFor="ingest-note">Notes</label>
                     <Textarea
                       disabled={isSubmitting}
-                      id="digest-note"
+                      id="ingest-note"
                       value={noteText}
                       onChange={(event) => setNoteText(event.target.value)}
                       placeholder="Paste highlights, rough notes, or ideas you consumed."
@@ -109,16 +109,16 @@ export function DigestSourcePage({
 
                 {activeType === "pdf" && (
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold" htmlFor="digest-pdf">PDF</label>
-                    <Input disabled={isSubmitting} id="digest-pdf" accept="application/pdf" type="file" onChange={(event) => setPdfFile(event.target.files?.[0] || null)} />
+                    <label className="text-sm font-semibold" htmlFor="ingest-pdf">PDF</label>
+                    <Input disabled={isSubmitting} id="ingest-pdf" accept="application/pdf" type="file" onChange={(event) => setPdfFile(event.target.files?.[0] || null)} />
                     <p className="text-xs text-muted-foreground">{pdfFile ? `${pdfFile.name} selected` : "Upload a readable PDF with selectable text."}</p>
                   </div>
                 )}
 
                 {activeType === "youtube" && (
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold" htmlFor="digest-youtube">YouTube URL</label>
-                    <Input disabled={isSubmitting} id="digest-youtube" value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder="https://youtube.com/watch?v=..." />
+                    <label className="text-sm font-semibold" htmlFor="ingest-youtube">YouTube URL</label>
+                    <Input disabled={isSubmitting} id="ingest-youtube" value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder="https://youtube.com/watch?v=..." />
                     <p className="text-xs text-muted-foreground">MVP uses available captions/transcripts only.</p>
                   </div>
                 )}
@@ -148,11 +148,11 @@ export function DigestSourcePage({
                   </div>
                 )}
 
-                {notice && <div className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">{notice}</div>}
+                {notice && <div className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive break-words">{notice}</div>}
 
                 <Button className="h-11 w-full" disabled={isSubmitting} type="submit">
                   {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  {isSubmitting ? "Digesting source..." : "Digest source"}
+                  {isSubmitting ? "Ingesting source..." : "Ingest source"}
                 </Button>
               </form>
             </CardContent>
@@ -178,7 +178,7 @@ export function DigestSourcePage({
                 <CardTitle className="text-base">Output surfaces</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Notes vault</Badge>
+                <Badge variant="secondary">Memories vault</Badge>
                 <Badge variant="secondary">Home feed</Badge>
                 <Badge variant="secondary">Graph</Badge>
                 <Badge variant="secondary">Chat context</Badge>

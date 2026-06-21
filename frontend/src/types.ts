@@ -1,6 +1,6 @@
 export type SourceType = "note" | "pdf" | "youtube";
 export type SourceStatus = "processing" | "ready" | "failed";
-export type ActiveView = "home" | "notes" | "digest" | "profile";
+export type ActiveView = "home" | "notes" | "ingest" | "profile";
 export type NotesMode = "note" | "graph";
 
 export type AccountRecord = {

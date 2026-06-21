@@ -3,7 +3,7 @@ import { GitBranch } from "lucide-react";
 
 import { MobileNav, SidebarNav, TopBar } from "@/components/AppNavigation";
 import { ChatPanel } from "@/components/ChatPanel";
-import { DigestSourcePage } from "@/components/DigestSourcePage";
+import { IngestSourcePage } from "@/components/IngestSourcePage";
 import { HomeAside, HomeView } from "@/components/HomeView";
 import { NotesView } from "@/components/NotesView";
 import { ProfileView } from "@/components/ProfileView";
@@ -168,17 +168,17 @@ export default function App() {
       <div className="app-frame pb-20 lg:pb-0">
         <TopBar account={account} />
         <div
-            className={activeView === "home" || activeView === "profile" ? "social-grid" : activeView === "digest" ? "digest-grid" : "notes-grid"}
-            style={{ ["--sidebar-width" as string]: isSidebarMinimized ? "72px" : "260px" }}
-          >
+          className={activeView === "home" || activeView === "profile" ? "social-grid" : activeView === "ingest" ? "ingest-grid" : "notes-grid"}
+          style={{ ["--sidebar-width" as string]: isSidebarMinimized ? "72px" : "260px" }}
+        >
           <SidebarNav account={account} activeView={activeView} notesMode={notesMode} setActiveView={setActiveView} setNotesMode={setNotesMode} isMinimized={isSidebarMinimized} toggleMinimize={() => setIsSidebarMinimized((v) => !v)} />
 
           {activeView === "home" ? (
             <HomeView account={account} notice={notice} posts={accountPosts} refresh={refreshWithNotice} setActiveView={setActiveView} />
           ) : activeView === "profile" ? (
             <ProfileView account={account} conceptCount={conceptCount} posts={accountPosts} readyCount={readyCount} setActiveView={setActiveView} sources={sources} />
-          ) : activeView === "digest" ? (
-            <DigestSourcePage
+          ) : activeView === "ingest" ? (
+            <IngestSourcePage
               activeType={activeType}
               ingestProgress={ingestProgress}
               isSubmitting={isSubmitting}

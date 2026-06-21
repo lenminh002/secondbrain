@@ -1,4 +1,4 @@
-import { AtSign, BadgeCheck, Bug, CalendarDays, FileText, Grid2X2, Repeat2, Tag, Upload } from "lucide-react";
+import { AtSign, BadgeCheck, Bug, CalendarDays, FileText, Grid2X2, Tag, Upload } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -51,12 +51,12 @@ export function ProfileView({
                   {account?.handle || "loading"}
                 </div>
                 <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
-                  Personal knowledge feed for digested notes, papers, concepts, and generated posts.
+                  Personal knowledge feed for ingested notes, papers, concepts, and generated posts.
                 </p>
               </div>
-              <Button onClick={() => setActiveView("digest")}>
+              <Button onClick={() => setActiveView("ingest")}>
                 <Upload className="h-4 w-4" />
-                Digest Source
+                Ingest Source
               </Button>
             </div>
 
@@ -98,14 +98,10 @@ export function ProfileView({
 
           <div className="min-w-0">
             <Tabs defaultValue="posts">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="posts">
                   <Grid2X2 className="mr-2 h-4 w-4" />
                   Posts
-                </TabsTrigger>
-                <TabsTrigger value="reposts">
-                  <Repeat2 className="mr-2 h-4 w-4" />
-                  Reposts
                 </TabsTrigger>
                 <TabsTrigger value="tags">
                   <Tag className="mr-2 h-4 w-4" />
@@ -119,16 +115,16 @@ export function ProfileView({
                     {posts.map((post) => (
                       <Card key={post.id}>
                         <CardHeader className="flex-row gap-3 space-y-0">
-                  <Avatar>
-                    {account?.avatar_url && <AvatarImage alt={account.name} src={account.avatar_url} />}
-                    <AvatarFallback>{account?.initials || ""}</AvatarFallback>
-                  </Avatar>
+                          <Avatar>
+                            {account?.avatar_url && <AvatarImage alt={account.name} src={account.avatar_url} />}
+                            <AvatarFallback>{account?.initials || ""}</AvatarFallback>
+                          </Avatar>
                           <div>
                             <CardTitle className="text-base">{post.source_title}</CardTitle>
                             <CardDescription>
                               {account ? `${account.name} · ` : ""}
                               @{account?.handle || post.account_id} ·{" "}
-                              {formatDate(post.created_at)} · AI-generated digest
+                              {formatDate(post.created_at)}
                             </CardDescription>
                           </div>
                         </CardHeader>
@@ -143,13 +139,9 @@ export function ProfileView({
                 )}
               </TabsContent>
 
-              <TabsContent className="mt-6" value="reposts">
-                <ProfileEmptyState label="No reposts yet" />
-              </TabsContent>
-
               <TabsContent className="mt-6" value="tags">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {["KnowledgeGraph", "PersonalAI", "DigestNotes", "ConceptMap"].map((tag) => (
+                  {["KnowledgeGraph", "PersonalAI", "IngestMemories", "ConceptMap"].map((tag) => (
                     <Card key={tag}>
                       <CardContent className="pt-6 text-lg font-bold">#{tag}</CardContent>
                     </Card>
@@ -176,11 +168,11 @@ function ProfileEmptyState({
       <div>
         <Bug className="mx-auto mb-6 h-24 w-24 text-primary" />
         <h3 className="text-4xl font-black tracking-tight">{label}</h3>
-        <p className="mt-3 text-lg text-muted-foreground">Posts will appear here when you digest a source.</p>
+        <p className="mt-3 text-lg text-muted-foreground">Posts will appear here when you ingest a source.</p>
         {setActiveView && (
-          <Button className="mt-6" onClick={() => setActiveView("digest")}>
+          <Button className="mt-6" onClick={() => setActiveView("ingest")}>
             <Upload className="h-4 w-4" />
-            Digest Source
+            Ingest Source
           </Button>
         )}
       </div>

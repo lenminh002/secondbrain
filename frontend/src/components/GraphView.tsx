@@ -295,7 +295,7 @@ export function GraphView({
         <CardContent className="pt-6 text-center">
           <GitBranch className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
           <p className="font-semibold">No graph nodes yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Digest a source, then graphify the knowledge base.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Ingest a source, then graphify the knowledge base.</p>
         </CardContent>
       </Card>
     );

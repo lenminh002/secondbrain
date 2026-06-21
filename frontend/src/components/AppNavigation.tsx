@@ -71,22 +71,22 @@ export function SidebarNav({
 }: NavProps) {
   const items = [
     { label: "Home", icon: Home, active: activeView === "home", action: () => setActiveView("home") },
-    { label: "Notes", icon: BookOpen, active: activeView === "notes" && notesMode === "note", action: () => { setActiveView("notes"); setNotesMode("note"); } },
+    { label: "Memories", icon: BookOpen, active: activeView === "notes" && notesMode === "note", action: () => { setActiveView("notes"); setNotesMode("note"); } },
     { label: "Graph", icon: GitBranch, active: activeView === "notes" && notesMode === "graph", action: () => { setActiveView("notes"); setNotesMode("graph"); } },
     { label: "Profile", icon: CircleUserRound, active: activeView === "profile", action: () => setActiveView("profile") },
   ];
 
-  const digestButton = (
+  const ingestButton = (
     <Button
       className={cn(
         "w-full transition-all duration-300",
         isMinimized ? "justify-center px-0 h-10 w-10 mx-auto rounded-full" : "gap-2"
       )}
-      onClick={() => setActiveView("digest")}
+      onClick={() => setActiveView("ingest")}
       size={isMinimized ? "icon" : "default"}
     >
       <Upload className="h-4 w-4 shrink-0" />
-      {!isMinimized && <span>Digest Source</span>}
+      {!isMinimized && <span>Ingest Source</span>}
     </Button>
   );
 
@@ -197,11 +197,11 @@ export function SidebarNav({
       <div className="pt-4 border-t">
         {isMinimized ? (
           <Tooltip>
-            <TooltipTrigger asChild>{digestButton}</TooltipTrigger>
-            <TooltipContent side="right">Digest Source</TooltipContent>
+            <TooltipTrigger asChild>{ingestButton}</TooltipTrigger>
+            <TooltipContent side="right">Ingest Source</TooltipContent>
           </Tooltip>
         ) : (
-          digestButton
+          ingestButton
         )}
       </div>
     </aside>
@@ -217,11 +217,11 @@ export function MobileNav({ activeView, setActiveView }: Pick<NavProps, "activeV
       </Button>
       <Button className="h-12 text-base" onClick={() => setActiveView("notes")} variant={activeView === "notes" ? "default" : "outline"}>
         <BookOpen className="h-5 w-5" />
-        Notes
+        Memories
       </Button>
-      <Button className="h-12 text-base" onClick={() => setActiveView("digest")} variant={activeView === "digest" ? "default" : "outline"}>
+      <Button className="h-12 text-base" onClick={() => setActiveView("ingest")} variant={activeView === "ingest" ? "default" : "outline"}>
         <Upload className="h-5 w-5" />
-        Digest
+        Ingest
       </Button>
       <Button className="h-12 text-base" onClick={() => setActiveView("profile")} variant={activeView === "profile" ? "default" : "outline"}>
         <CircleUserRound className="h-5 w-5" />

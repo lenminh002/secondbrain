@@ -41,10 +41,10 @@ export function NotesView({
   sourcesByType: Record<SourceType, SourceRecord[]>;
 }) {
   return (
-    <main className="min-h-[calc(100vh-74px)] border-r @container">
+    <main className="min-h-[calc(100vh-74px)] min-w-0 border-r @container">
       <div className="flex h-14 items-center justify-between border-b px-5">
         <div>
-          <h1 className="font-bold">Notes</h1>
+          <h1 className="font-bold">Memories</h1>
           <p className="text-xs text-muted-foreground">{readyCount} ready sources · {conceptCount} concepts</p>
         </div>
         <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ export function NotesView({
             </SheetTrigger>
             <SheetContent className="flex w-[92vw] max-w-none flex-col p-0" side="right">
               <SheetHeader className="sr-only">
-                <SheetTitle>AI Chat</SheetTitle>
+                <SheetTitle>The Librarian</SheetTitle>
               </SheetHeader>
               {chatPanel}
             </SheetContent>
@@ -88,18 +88,20 @@ export function NotesView({
                           sourcesByType[type].map((source) => (
                             <button
                               className={cn(
-                                "flex w-full items-start justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted",
+                                "w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-muted",
                                 selectedSourceId === source.id && "bg-muted",
                               )}
                               key={source.id}
                               onClick={() => { setSelectedSourceId(source.id); setNotesMode("note"); }}
                               type="button"
                             >
-                              <span className="min-w-0">
-                                <span className="block truncate font-medium">{source.title}</span>
-                                <span className="text-xs text-muted-foreground">{formatDate(source.created_at)}</span>
+                              <span className="flex w-full items-start justify-between gap-2 min-w-0">
+                                <span className="min-w-0">
+                                  <span className="block truncate font-medium">{source.title}</span>
+                                  <span className="text-xs text-muted-foreground">{formatDate(source.created_at)}</span>
+                                </span>
+                                <StatusBadge status={source.status} />
                               </span>
-                              <StatusBadge status={source.status} />
                             </button>
                           ))
                         ) : (
@@ -117,7 +119,7 @@ export function NotesView({
         <section className="min-h-0 min-w-0">
           <ScrollArea className="h-full">
             <div className="mx-auto max-w-4xl p-5">
-              {notice && <div className="mb-4 rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">{notice}</div>}
+              {notice && <div className="mb-4 rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive break-words">{notice}</div>}
               {notesMode === "graph" ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -137,14 +139,14 @@ export function NotesView({
                   <CardHeader>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <CardTitle className="text-2xl">{selectedSourceDetail.title}</CardTitle>
+                        <CardTitle className="text-2xl break-words">{selectedSourceDetail.title}</CardTitle>
                         <CardDescription>
                           {selectedSourceDetail.type} · {formatDate(selectedSourceDetail.created_at)}
                         </CardDescription>
                       </div>
                       <StatusBadge status={selectedSourceDetail.status} />
                     </div>
-                    {selectedSourceDetail.error && <p className="text-sm text-destructive">{selectedSourceDetail.error}</p>}
+                    {selectedSourceDetail.error && <p className="text-sm text-destructive break-words">{selectedSourceDetail.error}</p>}
                   </CardHeader>
                   <Separator />
                   <CardContent className="pt-5">
@@ -156,7 +158,7 @@ export function NotesView({
                   <CardContent className="pt-6 text-center">
                     <BookOpen className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
                     <p className="font-semibold">Select a note</p>
-                    <p className="mt-1 text-sm text-muted-foreground">Digest a source or choose one from the vault.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Ingest a source or choose one from the vault.</p>
                   </CardContent>
                 </Card>
               )}

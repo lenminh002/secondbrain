@@ -27,7 +27,7 @@ export function ChatPanel({
       <CardHeader className="border-b">
         <div className="flex items-center gap-2">
           <Bot className="h-5 w-5" />
-          <CardTitle>AI Sidebar</CardTitle>
+          <CardTitle>The Librarian</CardTitle>
         </div>
         <CardDescription>Ask across notes, graph nodes, and generated posts.</CardDescription>
       </CardHeader>

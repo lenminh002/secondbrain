@@ -30,7 +30,7 @@ export function HomeView({
       </div>
       <ScrollArea className="h-[calc(100vh-128px)]">
         <div className="mx-auto max-w-2xl space-y-4 p-5">
-          {notice && <div className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">{notice}</div>}
+          {notice && <div className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive break-words">{notice}</div>}
           {posts.length ? (
             posts.map((post) => (
               <Card key={post.id}>
@@ -57,10 +57,10 @@ export function HomeView({
               <div>
                 <Sparkles className="mx-auto mb-6 h-24 w-24 text-primary" />
                 <h2 className="text-4xl font-black tracking-tight">Nothing to see yet</h2>
-                <p className="mt-3 text-lg text-muted-foreground">Digest a source and posts will appear here.</p>
-                <Button className="mt-6" onClick={() => setActiveView("digest")}>
+                <p className="mt-3 text-lg text-muted-foreground">Ingest a source and posts will appear here.</p>
+                <Button className="mt-6" onClick={() => setActiveView("ingest")}>
                   <Upload className="h-4 w-4" />
-                  Digest Source
+                  Ingest Source
                 </Button>
               </div>
             </div>
@@ -91,7 +91,7 @@ export function HomeAside({
         <CardContent className="space-y-3 text-lg font-semibold">
           <div># KnowledgeGraph</div>
           <div># PersonalAI</div>
-          <div># DigestNotes</div>
+          <div># IngestMemories</div>
         </CardContent>
       </Card>
       <Card>
@@ -115,7 +115,7 @@ export function HomeAside({
               </Button>
             </div>
           ))}
-          {!sources.length && <p className="text-sm text-muted-foreground">Digest sources to get suggestions.</p>}
+          {!sources.length && <p className="text-sm text-muted-foreground">Ingest sources to get suggestions.</p>}
         </CardContent>
       </Card>
       <p className="px-2 text-sm font-medium text-muted-foreground">2026 {account?.name || "Profile"} · Personal knowledge feed</p>
