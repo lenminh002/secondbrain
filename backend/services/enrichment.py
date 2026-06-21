@@ -26,6 +26,26 @@ def _as_string_list(value: Any, limit: int = 12) -> list[str]:
     return cleaned[:limit]
 
 
+def _extract_tag_content(text: str, tag: str) -> str:
+    start_tag = f"<{tag}>"
+    end_tag = f"</{tag}>"
+    start_idx = text.find(start_tag)
+    if start_idx == -1:
+        return ""
+    end_idx = text.find(end_tag, start_idx + len(start_tag))
+    if end_idx == -1:
+        return text[start_idx + len(start_tag):].strip()
+    return text[start_idx + len(start_tag):end_idx].strip()
+
+
+def _extract_list_from_tag(text: str, tag: str) -> list[str]:
+    content = _extract_tag_content(text, tag)
+    if not content:
+        return []
+    lines = [line.strip().lstrip("-*•").strip() for line in content.split("\n")]
+    return [line for line in lines if line]
+
+
 def _fallback_enrichment(title: str, content: str) -> dict[str, Any]:
     sentences = re.split(r"(?<=[.!?])\s+", content.strip())
     usable = [sentence.strip() for sentence in sentences if sentence.strip()]
@@ -75,16 +95,92 @@ Source URL: {source_url or "none"}
 
 Existing tags already in the knowledge base: {existing_tags_str}
 
-Return ONLY valid JSON in this shape:
-{{
-  "summary": "one concise paragraph",
-  "key_ideas": ["short bullet"],
-  "concepts": ["canonical concept/entity name"],
-  "claims": ["claim or useful assertion"],
-  "questions": ["open question for future learning"],
-  "social_post": "A structured, recall-friendly study guide in clean Markdown that captures the document’s main argument, workflow, key details, mental models, and practical uses. Follow this exact Markdown structure (do NOT wrap the entire string in a code fence):\\n# Full Recall Summary\\n\\n## 1. One-sentence summary\\n> This document says: **[main idea in plain language].**\\n\\n## 2. Memory hook\\n> **[Short memory hook phrase, acronym, or simple chain]**\\n[Brief explanation of the hook]\\n\\n## 3. Big picture\\n- What problem is it trying to solve?\\n- What is the main method, argument, or framework?\\n- Why does it matter?\\n\\n## 4. Section-by-section breakdown\\nPreserve the document's structure (phases, chapters, slides, pages, or steps).\\n### [Section name]\\n**Main idea:** [1-3 clear sentences]\\n**What to remember:** [bullet points]\\n**Why it matters:** [purpose]\\n\\n## 5. Key concepts explained simply\\nFor each important term:\\n**[Concept]**\\n- Simple explanation:\\n- Example:\\n- Why it matters:\\n\\n## 6. The workflow / process\\nIf the document teaches a method, convert it into a Markdown table with columns: | Step | What to do | Output |\\nIf no workflow exists, write 'No direct workflow, but the logic is:' and explain the flow of ideas.\\n\\n## 7. Main lessons\\nRank by importance. State the lesson, explain it simply, and say where/how the user can apply it.\\n\\n## 8. Practical uses\\nExplain how the user can use the information in real life, school, coding, business, research, or projects with concrete examples.\\n\\n## 9. What people usually misunderstand\\n**Misunderstanding:** [common trap]\\n**Correct understanding:** [correct explanation]\\n\\n## 10. Quick recall version\\n> **[Topic] = [core idea].**\\n> Remember: **A -> B -> C -> D.**\\n\\n## 11. Active recall questions\\nCreate 8-15 short questions with answers that test understanding.\\n**Q1. [Question]**\\nA: [Answer]\\n\\n## 12. Final cheat sheet\\nA Markdown table or list containing the main idea, key terms, key steps, main warning, and best use case.",
-  "tags": ["broad-topic-tag"]
-}}
+Please analyze the content and wrap your outputs in the following XML-like tags:
+
+<summary>
+one concise paragraph summarizing the source.
+</summary>
+
+<key_ideas>
+- short bullet point 1
+- short bullet point 2
+</key_ideas>
+
+<concepts>
+- canonical concept or entity name 1
+- canonical concept or entity name 2
+</concepts>
+
+<claims>
+- claim or useful assertion 1
+- claim or useful assertion 2
+</claims>
+
+<questions>
+- open question for future learning 1
+</questions>
+
+<social_post>
+A structured, recall-friendly study guide in clean Markdown that captures the document’s main argument, workflow, key details, mental models, and practical uses. Follow this exact Markdown structure (do NOT wrap the entire string in a code fence):
+# Full Recall Summary
+
+## 1. One-sentence summary
+> This document says: **[main idea in plain language].**
+
+## 2. Memory hook
+> **[Short memory hook phrase, acronym, or simple chain]**
+[Brief explanation of the hook]
+
+## 3. Big picture
+- What problem is it trying to solve?
+- What is the main method, argument, or framework?
+- Why does it matter?
+
+## 4. Section-by-section breakdown
+Preserve the document's structure (phases, chapters, slides, pages, or steps).
+### [Section name]
+**Main idea:** [1-3 clear sentences]
+**What to remember:** [bullet points]
+**Why it matters:** [purpose]
+
+## 5. Key concepts explained simply
+For each important term:
+**[Concept]**
+- Simple explanation:
+- Example:
+- Why it matters:
+
+## 6. The workflow / process
+If the document teaches a method, convert it into a Markdown table with columns: | Step | What to do | Output |
+If no workflow exists, write 'No direct workflow, but the logic is:' and explain the flow of ideas.
+
+## 7. Main lessons
+Rank by importance. State the lesson, explain it simply, and say where/how the user can apply it.
+
+## 8. Practical uses
+Explain how the user can use the information in real life, school, coding, business, research, or projects with concrete examples.
+
+## 9. What people usually misunderstand
+**Misunderstanding:** [common trap]
+**Correct understanding:** [correct explanation]
+
+## 10. Quick recall version
+> **[Topic] = [core idea].**
+> Remember: **A -> B -> C -> D.**
+
+## 11. Active recall questions
+Create 8-15 short questions with answers that test understanding.
+**Q1. [Question]**
+A: [Answer]
+
+## 12. Final cheat sheet
+A Markdown table or list containing the main idea, key terms, key steps, main warning, and best use case.
+</social_post>
+
+<tags>
+- broad-topic-tag-1
+- broad-topic-tag-2
+</tags>
 
 Tags rules (IMPORTANT):
 - Choose 2–4 broad topic tags for this source.
@@ -104,23 +200,41 @@ Content:
             temperature=0.2,
             messages=[{"role": "user", "content": prompt}],
         )
-        parsed = json.loads(_strip_code_fence(_text_from_content(message.content)))
-        if not isinstance(parsed, dict):
-            raise ValueError("Claude enrichment response was not a JSON object.")
+        response_text = _text_from_content(message.content)
+        
+        summary = _extract_tag_content(response_text, "summary")
+        if not summary:
+            raise ValueError("Failed to extract summary from XML response.")
+            
+        key_ideas = _extract_list_from_tag(response_text, "key_ideas")
+        concepts = _extract_list_from_tag(response_text, "concepts")
+        claims = _extract_list_from_tag(response_text, "claims")
+        questions = _extract_list_from_tag(response_text, "questions")
+        social_post = _extract_tag_content(response_text, "social_post")
+        tags = _extract_list_from_tag(response_text, "tags")
+        
+        parsed = {
+            "summary": summary,
+            "key_ideas": key_ideas,
+            "concepts": concepts,
+            "claims": claims,
+            "questions": questions,
+            "social_post": social_post,
+            "tags": tags,
+        }
     except Exception:
-        # Malformed / non-JSON model output used to propagate here and mark the
-        # entire source as failed.  Degrade gracefully to the rule-based fallback.
+        # Degrading to rule-based fallback if model fails
         return _fallback_enrichment(title, content)
 
     fallback = _fallback_enrichment(title, content)
     return {
-        "summary": str(parsed.get("summary", "")).strip() or fallback["summary"],
-        "key_ideas": _as_string_list(parsed.get("key_ideas")),
-        "concepts": _as_string_list(parsed.get("concepts")),
-        "claims": _as_string_list(parsed.get("claims")),
-        "questions": _as_string_list(parsed.get("questions")),
-        "social_post": str(parsed.get("social_post", "")).strip() or fallback["social_post"],
-        "tags": _as_string_list(parsed.get("tags"), limit=4),
+        "summary": parsed.get("summary", "").strip() or fallback["summary"],
+        "key_ideas": parsed.get("key_ideas") or fallback["key_ideas"],
+        "concepts": parsed.get("concepts") or fallback["concepts"],
+        "claims": parsed.get("claims") or fallback["claims"],
+        "questions": parsed.get("questions") or fallback["questions"],
+        "social_post": parsed.get("social_post", "").strip() or fallback["social_post"],
+        "tags": parsed.get("tags") or fallback["tags"],
     }
 
 
