@@ -47,19 +47,46 @@ def _extract_list_from_tag(text: str, tag: str) -> list[str]:
 
 
 def _fallback_enrichment(title: str, content: str) -> dict[str, Any]:
+    stopwords = {
+        "about", "above", "after", "again", "against", "all", "also", "and", "any", "are", "because",
+        "been", "before", "being", "below", "between", "both", "but", "could", "did", "does", "doing",
+        "down", "during", "each", "few", "for", "from", "further", "had", "has", "have", "having",
+        "here", "hers", "him", "his", "how", "its", "just", "like", "look", "more", "most", "myself",
+        "only", "other", "our", "ours", "out", "over", "own", "same", "she", "should", "some", "such",
+        "than", "that", "the", "their", "theirs", "them", "themselves", "then", "there", "these",
+        "they", "this", "those", "through", "too", "under", "until", "very", "was", "were", "what",
+        "when", "where", "which", "while", "who", "whom", "why", "with", "would", "you", "your",
+        "yours", "yourself", "yourselves", "still", "think", "people", "agents", "look", "like", "this",
+        "many", "much", "good", "great", "well", "know", "make", "work", "time", "year", "back", "first",
+        "into", "your", "them", "want", "more", "when", "here", "who", "will", "need", "even", "does"
+    }
+
     sentences = re.split(r"(?<=[.!?])\s+", content.strip())
     usable = [sentence.strip() for sentence in sentences if sentence.strip()]
     summary = " ".join(usable[:2]) if usable else f"{title} was added to the knowledge base."
-    words = re.findall(r"[A-Za-z][A-Za-z0-9-]{3,}", content)
+    
     seen: set[str] = set()
     concepts: list[str] = []
-    for word in words:
+    
+    # 1. Prioritize title words
+    title_words = re.findall(r"[A-Za-z][A-Za-z0-9-]{2,}", title)
+    for word in title_words:
         key = word.lower()
-        if key not in seen:
+        if key not in stopwords and key not in seen:
             seen.add(key)
             concepts.append(word)
-        if len(concepts) >= 8:
-            break
+            
+    # 2. Add content words if we need more
+    if len(concepts) < 8:
+        content_words = re.findall(r"[A-Za-z][A-Za-z0-9-]{3,}", content)
+        for word in content_words:
+            key = word.lower()
+            if key not in stopwords and key not in seen:
+                seen.add(key)
+                concepts.append(word)
+            if len(concepts) >= 8:
+                break
+                
     key_ideas = usable[:5] or [summary]
     return {
         "summary": summary,
