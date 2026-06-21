@@ -81,7 +81,7 @@ button:disabled,
 
 .notes-grid {
   display: grid;
-  grid-template-columns: var(--sidebar-width, 260px) minmax(0, 1fr) 360px;
+  grid-template-columns: var(--sidebar-width, 260px) minmax(0, 1fr) var(--chat-width, 360px);
   transition: grid-template-columns 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 

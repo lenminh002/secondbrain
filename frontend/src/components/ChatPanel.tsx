@@ -1,5 +1,5 @@
 import { FormEvent } from "react";
-import { Bot, GitBranch, Loader2, MessageCircle } from "lucide-react";
+import { Bot, GitBranch, Loader2, MessageCircle, ChevronRight, ChevronLeft } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,21 +15,43 @@ export function ChatPanel({
   isChatting,
   setChatInput,
   submitChat,
+  isMinimized,
+  toggleMinimize,
 }: {
   chatInput: string;
   chatLog: ChatMessage[];
   isChatting: boolean;
   setChatInput: (value: string) => void;
   submitChat: (event: FormEvent<HTMLFormElement>) => void;
+  isMinimized?: boolean;
+  toggleMinimize?: () => void;
 }) {
+  if (isMinimized) {
+    return (
+      <Card className="flex h-full min-h-0 flex-col rounded-none border-0 border-l shadow-none lg:rounded-none bg-muted/20 items-center py-4">
+        {toggleMinimize && (
+          <Button variant="ghost" size="icon" onClick={toggleMinimize} className="mb-4">
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+        )}
+        <Bot className="h-5 w-5 text-muted-foreground" />
+      </Card>
+    );
+  }
+
   return (
-    <Card className="flex h-full min-h-0 flex-col rounded-none border-0 border-l shadow-none lg:rounded-none">
-      <CardHeader className="border-b">
+    <Card className="flex h-full min-h-0 flex-col rounded-none border-0 border-l shadow-none lg:rounded-none relative">
+      <CardHeader className="border-b pr-14">
         <div className="flex items-center gap-2">
           <Bot className="h-5 w-5" />
           <CardTitle>The Librarian</CardTitle>
         </div>
         <CardDescription>Ask across notes, graph nodes, and generated posts.</CardDescription>
+        {toggleMinimize && (
+          <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={toggleMinimize}>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </Button>
+        )}
       </CardHeader>
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-3 p-4">

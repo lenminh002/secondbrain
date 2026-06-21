@@ -40,6 +40,7 @@ export default function App() {
   const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
   const [isChatting, setIsChatting] = useState(false);
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
+  const [isChatMinimized, setIsChatMinimized] = useState(false);
 
   async function refresh() {
     const data = await fetchKnowledgeData();
@@ -160,7 +161,7 @@ export default function App() {
     return account ? posts.filter((post) => post.account_id === account.id) : posts;
   }, [account, posts]);
   const chatPanel = (
-    <ChatPanel chatInput={chatInput} chatLog={chatLog} isChatting={isChatting} setChatInput={setChatInput} submitChat={submitChat} />
+    <ChatPanel chatInput={chatInput} chatLog={chatLog} isChatting={isChatting} setChatInput={setChatInput} submitChat={submitChat} isMinimized={isChatMinimized} toggleMinimize={() => setIsChatMinimized((v) => !v)} />
   );
 
   return (
@@ -169,7 +170,10 @@ export default function App() {
         <TopBar account={account} />
         <div
           className={activeView === "home" || activeView === "profile" ? "social-grid" : activeView === "ingest" ? "ingest-grid" : "notes-grid"}
-          style={{ ["--sidebar-width" as string]: isSidebarMinimized ? "72px" : "260px" }}
+          style={{ 
+            ["--sidebar-width" as string]: isSidebarMinimized ? "72px" : "260px",
+            ["--chat-width" as string]: isChatMinimized ? "48px" : "360px"
+          }}
         >
           <SidebarNav account={account} activeView={activeView} notesMode={notesMode} setActiveView={setActiveView} setNotesMode={setNotesMode} isMinimized={isSidebarMinimized} toggleMinimize={() => setIsSidebarMinimized((v) => !v)} />
 

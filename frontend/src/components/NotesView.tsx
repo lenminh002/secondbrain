@@ -1,4 +1,5 @@
-import { BookOpen, Bot, FileText, GitBranch } from "lucide-react";
+import { useState } from "react";
+import { BookOpen, Bot, FileText, GitBranch, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { GraphView } from "@/components/GraphView";
 import { SourceContent } from "@/components/SourceContent";
@@ -40,6 +41,8 @@ export function NotesView({
   setSelectedSourceId: (id: string) => void;
   sourcesByType: Record<SourceType, SourceRecord[]>;
 }) {
+  const [isVaultMinimized, setIsVaultMinimized] = useState(false);
+
   return (
     <main className="min-h-[calc(100vh-74px)] min-w-0 border-r @container">
       <div className="flex h-14 items-center justify-between border-b px-5">
@@ -70,9 +73,29 @@ export function NotesView({
         </div>
       </div>
 
-      <div className="grid h-[calc(100vh-128px)] grid-cols-1 @2xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="min-h-0 border-b bg-muted/20 @2xl:border-b-0 @2xl:border-r">
-          <ScrollArea className="h-full max-h-[320px] @2xl:max-h-none">
+      <div 
+        className="grid h-[calc(100vh-128px)] grid-cols-1 @2xl:grid-cols-[var(--vault-width,280px)_minmax(0,1fr)] transition-[grid-template-columns] duration-300"
+        style={{ "--vault-width": isVaultMinimized ? "48px" : "280px" } as React.CSSProperties}
+      >
+        <aside className="min-h-0 border-b bg-muted/20 @2xl:border-b-0 @2xl:border-r relative transition-all duration-300">
+          {isVaultMinimized ? (
+            <div className="flex flex-col items-center py-4 h-full">
+              <Button variant="ghost" size="icon" onClick={() => setIsVaultMinimized(false)}>
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+              <FileText className="h-5 w-5 mt-4 text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute top-2 right-2 z-10 h-8 w-8 hidden @2xl:flex" 
+                onClick={() => setIsVaultMinimized(true)}
+              >
+                <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+              </Button>
+              <ScrollArea className="h-full max-h-[320px] @2xl:max-h-none">
             <div className="space-y-5 p-4">
               <div>
                 <div className="mb-2 flex items-center gap-2 text-sm font-bold">
@@ -114,6 +137,8 @@ export function NotesView({
               </div>
             </div>
           </ScrollArea>
+          </>
+          )}
         </aside>
 
         <section className="min-h-0 min-w-0">
