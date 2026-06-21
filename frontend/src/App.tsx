@@ -880,7 +880,7 @@ export default function App() {
     <TooltipProvider>
       <div className="app-frame pb-20 lg:pb-0">
         <TopBar />
-        <div className={activeView === "home" ? "social-grid" : "notes-grid"}>
+        <div className={activeView === "home" ? "social-grid" : activeView === "digest" ? "digest-grid" : "notes-grid"}>
           <SidebarNav activeView={activeView} notesMode={notesMode} setActiveView={setActiveView} setNotesMode={setNotesMode} />
 
           {activeView === "home" ? (
@@ -1108,9 +1108,9 @@ export default function App() {
               </Card>
               <p className="px-2 text-sm font-medium text-muted-foreground">2026 Second Signal · Personal knowledge feed</p>
             </aside>
-          ) : (
+          ) : activeView === "notes" ? (
             <aside className="sticky top-[74px] hidden h-[calc(100vh-74px)] lg:block">{chatPanel}</aside>
-          )}
+          ) : null}
         </div>
         <MobileNav activeView={activeView} setActiveView={setActiveView} />
         <Tooltip>
