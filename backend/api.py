@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
+import sys
 
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+if __package__ in {None, ""}:
+    repo_root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(repo_root))
+else:
+    repo_root = Path(__file__).resolve().parents[1]
 
 load_dotenv()
 
@@ -39,4 +47,10 @@ app.include_router(misc.router)
 
 
 if __name__ == "__main__":
-    uvicorn.run("backend.api:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "backend.api:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        app_dir=str(repo_root),
+    )
