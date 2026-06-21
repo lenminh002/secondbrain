@@ -160,7 +160,7 @@ export function NotesView({
           </Drawer>
         </div>
 
-        <ScrollArea className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
           <div className="mx-auto max-w-4xl p-5">
             {notice && <div className="mb-4 rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive break-words">{notice}</div>}
             {notesMode === "graph" ? (
@@ -236,7 +236,7 @@ export function NotesView({
               </Card>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </section>
     </main>
   );

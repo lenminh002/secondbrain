@@ -42,7 +42,7 @@ export function SidebarNav({
   return (
     <aside
       className={cn(
-        "sticky top-[74px] hidden h-[calc(100vh-74px)] border-r bg-background py-7 lg:flex flex-col transition-all duration-300 ease-in-out",
+        "sticky top-[74px] hidden h-[calc(100vh-74px)] bg-background py-7 lg:flex flex-col transition-all duration-300 ease-in-out",
         isMinimized ? "px-3" : "px-5"
       )}
     >
@@ -69,7 +69,6 @@ export function SidebarNav({
             />
           );
         })}
-      </nav>
         <div className="pt-4">
           {isMinimized ? (
             <Tooltip>
@@ -80,6 +79,7 @@ export function SidebarNav({
             ingestButton
           )}
         </div>
+      </nav>
     </aside>
   );
 }
