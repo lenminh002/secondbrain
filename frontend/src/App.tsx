@@ -6,6 +6,7 @@ import { ChatView } from "@/components/ChatPanel";
 import { DigestSourcePage } from "@/components/DigestSourcePage";
 import { HomeAside, HomeView } from "@/components/HomeView";
 import { NotesView } from "@/components/NotesView";
+import { PostDrawer } from "@/components/PostDrawer";
 import { ProfileView } from "@/components/ProfileView";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -185,12 +186,17 @@ export default function App() {
   return (
     <TooltipProvider>
       <div className="app-frame pb-20 lg:pb-0">
-        <TopBar account={account} />
+        <TopBar
+          account={account}
+          activeView={activeView}
+          onSearch={(query) => { setChatInput(query); setActiveView("chat"); }}
+          setActiveView={setActiveView}
+        />
         <div
             className={activeView === "home" || activeView === "profile" ? "social-grid" : activeView === "digest" ? "digest-grid" : "notes-grid"}
             style={{ ["--sidebar-width" as string]: "236px" }}
           >
-          <SidebarNav account={account} activeView={activeView} notesMode={notesMode} setActiveView={setActiveView} setNotesMode={setNotesMode} />
+          <SidebarNav account={account} activeView={activeView} notesMode={notesMode} postDrawer={<PostDrawer onCreated={refreshWithNotice} />} setActiveView={setActiveView} setNotesMode={setNotesMode} />
 
           {activeView === "home" ? (
             <HomeView account={account} notice={notice} posts={accountPosts} refresh={refreshWithNotice} setActiveView={setActiveView} />

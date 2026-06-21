@@ -32,6 +32,8 @@
 .brand {
   font-family: "Borel", cursive;
   line-height: 1;
+  position: relative;
+  top: -0.18em;
 }
 
 html,

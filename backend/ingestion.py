@@ -17,8 +17,8 @@ from storage import (
     save_source_result,
 )
 
-SOURCE_TYPES = {"note", "pdf", "youtube"}
-ACTIVE_SOURCE_TYPES = {"note", "pdf"}
+SOURCE_TYPES = {"note", "pdf", "link", "youtube"}
+ACTIVE_SOURCE_TYPES = {"note", "pdf", "link"}
 VIDEO_DEFERRED_MESSAGE = "Video ingestion is currently disabled and to be fixed."
 INGEST_PROGRESS: dict[str, tuple[str, int]] = {
     "validating": ("Validating source", 5),
@@ -147,11 +147,13 @@ def validate_source_input(
     if source_type == "youtube":
         raise VideoIngestionDeferred(VIDEO_DEFERRED_MESSAGE)
     if source_type not in ACTIVE_SOURCE_TYPES:
-        raise ValueError("Source type must be note or pdf.")
+        raise ValueError("Source type must be note, pdf, or link.")
     if source_type == "note" and not (text or "").strip():
         raise ValueError("Note text is required.")
     if source_type == "pdf" and not file_bytes:
         raise ValueError("PDF upload is required.")
+    if source_type == "link" and not (source_url or "").strip():
+        raise ValueError("Link URL is required.")
 
 
 def create_processing_source(
@@ -237,6 +239,9 @@ def process_source(
         if source_type == "note":
             _set_progress(source, "reading_text")
             content = (text or "").strip()
+        elif source_type == "link":
+            _set_progress(source, "reading_text")
+            content = (source.get("source_url") or source_url or "").strip()
         else:
             pdf_bytes = file_bytes or b""
             _set_progress(source, "uploading")

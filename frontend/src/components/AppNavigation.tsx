@@ -1,43 +1,133 @@
+import type { ReactNode } from "react";
+import { useState } from "react";
 import {
+  BadgeCheck,
   BookOpen,
   CircleUserRound,
+  Compass,
   GitBranch,
   Home,
+  Lock,
   MessageCircle,
   PenLine,
   Search,
+  Trash2,
   Upload,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AccountRecord, ActiveView, NotesMode } from "@/types";
 
 export function Logo() {
   return (
-    <div className="flex items-center gap-3">
-      <div className="grid h-8 w-8 place-items-center rounded-md bg-primary text-primary-foreground">
+    <div className="flex items-center gap-2">
+      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
         <PenLine className="h-5 w-5" />
       </div>
-      <div className="brand text-xl leading-none">Second-Brain</div>
+      <span className="brand text-xl leading-none">Second-Brain</span>
     </div>
   );
 }
 
-export function TopBar({ account }: { account: AccountRecord | null }) {
+function SearchDialog({ onSearch }: { onSearch: (query: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [history, setHistory] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("recentSearches") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  function runSearch(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    const updated = [trimmed, ...history.filter((item) => item !== trimmed)].slice(0, 5);
+    localStorage.setItem("recentSearches", JSON.stringify(updated));
+    setHistory(updated);
+    setQuery("");
+    setOpen(false);
+    onSearch(trimmed);
+  }
+
   return (
-    <header className="sticky top-0 z-30 flex h-[74px] items-center justify-between bg-background px-4 lg:px-6">
+    <Dialog onOpenChange={setOpen} open={open}>
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost">
+          <Search className="h-5 w-5" />
+          <span className="sr-only">Search</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[460px]">
+        <DialogHeader>
+          <DialogTitle>Search</DialogTitle>
+        </DialogHeader>
+        <form className="relative mt-2" onSubmit={(event) => { event.preventDefault(); runSearch(query); }}>
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-9" onChange={(event) => setQuery(event.target.value)} placeholder="Search your knowledge..." value={query} />
+        </form>
+        <div className="mt-2">
+          <div className="mb-2 flex items-center justify-between">
+            <h4 className="text-sm font-medium">Recent searches</h4>
+            {!!history.length && (
+              <Button onClick={() => { setHistory([]); localStorage.removeItem("recentSearches"); }} size="icon" variant="ghost">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          <ScrollArea className="max-h-[220px]">
+            <ul className="space-y-1">
+              {history.length ? (
+                history.map((item, index) => (
+                  <li key={`${item}-${index}`}>
+                    <Button className="w-full justify-start" onClick={() => runSearch(item)} variant="ghost">
+                      <Search className="mr-2 h-4 w-4" />
+                      {item}
+                    </Button>
+                  </li>
+                ))
+              ) : (
+                <li className="px-1 text-sm text-muted-foreground">No recent searches.</li>
+              )}
+            </ul>
+          </ScrollArea>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function TopBar({
+  account,
+  activeView,
+  setActiveView,
+  onSearch,
+}: {
+  account: AccountRecord | null;
+  activeView: ActiveView;
+  setActiveView: (view: ActiveView) => void;
+  onSearch: (query: string) => void;
+}) {
+  const tabValue = activeView === "home" ? "private" : activeView === "notes" ? "explore" : "";
+
+  return (
+    <header className="container mx-auto px-4 py-4 flex flex-col lg:flex-row items-center justify-between">
       <Logo />
-      <div className="hidden w-full max-w-sm items-center gap-2 rounded-md bg-muted px-3 py-2 md:flex">
-        <Search className="h-4 w-4 text-muted-foreground" />
-        <input className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground" placeholder="Search notes, concepts, posts..." />
-      </div>
-      <div className="flex items-center gap-3">
-        <Avatar>
-          {account?.avatar_url && <AvatarImage alt={account.name} src={account.avatar_url} />}
-          <AvatarFallback>{account?.initials || ""}</AvatarFallback>
-        </Avatar>
+
+      <div className="flex items-center gap-2">
+        <SearchDialog onSearch={onSearch} />
+        <Button className="rounded-full" onClick={() => setActiveView("profile")} size="icon" variant="ghost">
+          <Avatar className="h-8 w-8">
+            {account?.avatar_url && <AvatarImage alt={account.name} className="object-cover object-center" src={account.avatar_url} />}
+            <AvatarFallback>{account?.initials || ""}</AvatarFallback>
+          </Avatar>
+        </Button>
       </div>
     </header>
   );
@@ -49,6 +139,7 @@ type NavProps = {
   notesMode: NotesMode;
   setActiveView: (view: ActiveView) => void;
   setNotesMode: (mode: NotesMode) => void;
+  postDrawer?: ReactNode;
 };
 
 export function SidebarNav({
@@ -57,6 +148,7 @@ export function SidebarNav({
   notesMode,
   setActiveView,
   setNotesMode,
+  postDrawer,
 }: NavProps) {
   const items = [
     { label: "Home", icon: Home, active: activeView === "home", action: () => setActiveView("home") },
@@ -68,37 +160,35 @@ export function SidebarNav({
 
   return (
     <aside className="sticky top-[74px] hidden h-[calc(100vh-74px)] flex-col bg-background px-5 py-5 lg:flex">
-      <div className="mb-5 flex items-center gap-3">
-        <Avatar className="h-14 w-14">
-          {account?.avatar_url && <AvatarImage alt={account.name} src={account.avatar_url} />}
+      <div className="mb-4 flex items-center gap-3 px-2">
+        <Avatar>
+          {account?.avatar_url && <AvatarImage alt={account.name} className="object-cover object-center" src={account.avatar_url} />}
           <AvatarFallback>{account?.initials || ""}</AvatarFallback>
         </Avatar>
-        <div className="overflow-hidden">
-          <div className="font-semibold">{account?.name || "Loading"}</div>
-          <div className="text-sm text-muted-foreground">{account ? `@${account.handle}` : "Loading account"}</div>
+        <div className="min-w-0">
+          <div className="flex items-center">
+            <p className="truncate font-medium">{account?.name || "Guest User"}</p>
+            <BadgeCheck className="ml-1 h-4 w-4 shrink-0 text-blue-500" />
+          </div>
+          <p className="truncate text-xs text-muted-foreground">@{account?.handle || "guest"}</p>
         </div>
       </div>
 
       <nav className="flex flex-grow flex-col items-stretch space-y-1">
         {items.map((item) => (
           <Button
-            className={cn("w-full justify-start gap-3 text-base", item.active ? "text-foreground" : "text-muted-foreground")}
+            className="w-full justify-start"
             key={item.label}
             onClick={item.action}
             variant={item.active ? "secondary" : "ghost"}
           >
-            <item.icon className="h-5 w-5 shrink-0" />
+            <item.icon className="mr-2 h-4 w-4" />
             <span>{item.label}</span>
           </Button>
         ))}
       </nav>
 
-      <div className="pt-4">
-        <Button className="w-full gap-2" onClick={() => setActiveView("digest")}>
-          <Upload className="h-4 w-4 shrink-0" />
-          <span>Digest Source</span>
-        </Button>
-      </div>
+      <div className="pt-4">{postDrawer}</div>
     </aside>
   );
 }
