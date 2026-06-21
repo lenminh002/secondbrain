@@ -1,13 +1,37 @@
-# SecondBrain
+# Second Brain
 
-SecondBrain is a hackathon MVP for a personal knowledge-base assistant. Add notes or PDFs,
-and the app converts them into canonical Markdown, generated posts, graph concepts,
-embeddings, and chat-ready retrieval context.
+Second Brain is a hackathon MVP for a personal knowledge-base assistant. It helps users save knowledge from notes, PDFs, and links, then recall it later through search, generated summaries, a knowledge graph, and an agent chat experience.
 
-The implementation uses FastAPI, React/Vite, in-memory mock storage by default,
-Claude for enrichment and chat, and OpenAI embeddings when `OPENAI_API_KEY` is configured.
+The app uses a FastAPI backend, a React/Vite frontend, Firebase Auth, optional Firestore persistence, Anthropic Claude for enrichment and chat, and OpenAI embeddings when configured.
+
+## Features
+
+- Ingest notes, PDFs, and web links.
+- Convert saved material into structured memories with summaries, key ideas, claims, questions, concepts, and tags.
+- Build retrieval chunks and a knowledge graph that connects related ideas.
+- Chat with an agent that uses saved knowledge, citations, graph context, tool traces, and streaming responses.
+- Edit saved memory content and regenerate related artifacts.
+- Archive chat sessions back into the knowledge base.
+- Store original uploaded files with GitHub by default or Google Drive as an alternate provider.
+- Run locally with in-memory demo data or persist data in Firebase Firestore.
+
+## Tech Stack
+
+- Python, FastAPI, Uvicorn
+- TypeScript, React, Vite
+- Firebase Auth, Firebase Admin SDK, Firestore
+- Anthropic Claude API
+- OpenAI Embeddings API
+- GitHub Contents API
+- Google Drive API
+- Tailwind CSS, Radix UI, Vaul, Lucide React
+- D3 Force, React Markdown, Remark GFM
+- PyPDF, Pillow, HTTPX
+- Pytest
 
 ## Install
+
+From the project root:
 
 ```bash
 uv sync
@@ -17,90 +41,80 @@ npm install
 
 ## Environment
 
-```bash
-export ANTHROPIC_API_KEY="your_claude_key"
-export OPENAI_API_KEY="your_openai_key"
-```
-
-Both keys are optional for local development. Without `ANTHROPIC_API_KEY`, the backend uses a local
-fallback enrichment. Without `OPENAI_API_KEY`, it uses deterministic local embeddings.
-No login or Firebase setup is required for the default mock-data mode. PDF ingestion requires
-Google Drive upload configuration because the original PDF is stored in Drive and linked from
-source metadata.
-
-Copy `.env.example` to `.env` if you want file-based local configuration:
+Copy the example backend environment file:
 
 ```bash
 cp .env.example .env
 ```
 
+The backend can run without AI keys for local development. Without `ANTHROPIC_API_KEY`, it uses local fallback enrichment. Without `OPENAI_API_KEY`, it uses deterministic local embeddings.
+
+Common backend variables:
+
+```bash
+ANTHROPIC_API_KEY="your_claude_key"
+OPENAI_API_KEY="your_openai_key"
+SECONDBRAIN_STORAGE_BACKEND=memory
+SECONDBRAIN_SEED_MOCK_DATA=1
+```
+
+Create `frontend/.env` for the Vite app:
+
+```bash
+VITE_API_BASE_URL="http://localhost:8000"
+VITE_FIREBASE_API_KEY="your-firebase-web-api-key"
+VITE_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
+VITE_FIREBASE_PROJECT_ID="your-firebase-project-id"
+VITE_FIREBASE_APP_ID="your-firebase-web-app-id"
+```
+
+Firebase Auth is used by the frontend for Google sign-in. The backend accepts Firebase ID tokens when present and falls back to the mock account for local demo mode.
+
 ## Run
+
+Start the backend from the project root:
+
+```bash
+uv run python -m backend.api
+```
+
+Equivalent Uvicorn command:
 
 ```bash
 uv run uvicorn backend.api:app --reload
 ```
 
-In another terminal:
+Do not run `uv run api.py` from inside `backend/`; the backend imports expect the project root to be on Python's module path.
+
+In another terminal, start the frontend:
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-The frontend defaults to `http://localhost:8000`. Override it with:
-
-```bash
-VITE_API_BASE_URL="http://localhost:8000" npm run dev
-```
-
-## API
-
-- `POST /sources`
-  - multipart or JSON
-  - fields: `type=note|pdf`, `title`, `text`, `file`
-- `GET /sources`
-- `GET /sources/{id}`
-- `GET /account`
-- `GET /posts`
-- `GET /graph`
-- `POST /chat` with `{ "message": "..." }`
+The frontend runs on the Vite URL printed in the terminal and talks to `VITE_API_BASE_URL`, defaulting to `http://127.0.0.1:8000`.
 
 ## Storage
 
-The backend defaults to seeded in-memory mock data. Set
-`SECONDBRAIN_STORAGE_BACKEND=firestore` only if you intentionally want to use the optional
-Firestore backend.
-
-Original PDF uploads are stored in Google Drive before text extraction. Create a Google Cloud
-service account with Drive API access, create or choose a Drive folder, share that folder with
-the service account email, then configure:
+The backend defaults to seeded in-memory storage:
 
 ```bash
-GOOGLE_DRIVE_FOLDER_ID="your-drive-folder-id"
-GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/absolute/path/to/drive-service-account.json"
-# or:
-GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
+SECONDBRAIN_STORAGE_BACKEND=memory
+SECONDBRAIN_SEED_MOCK_DATA=1
 ```
 
-The backend stores the restricted Drive `webViewLink` as `source_url` and as
-`metadata.original_file.drive_web_view_link`. It does not make uploaded files public; users need
-Drive permission to open the original PDF link.
-
-To store ingested sources, chunks, generated posts, graph nodes, and graph edges in Firebase
-Firestore, create a Firebase project with Firestore enabled, create a service account JSON
-key, then configure:
+Use Firestore for persistent accounts, sources, chunks, posts, and graph data:
 
 ```bash
 SECONDBRAIN_STORAGE_BACKEND=firestore
 FIREBASE_PROJECT_ID="your-firebase-project-id"
 FIREBASE_SERVICE_ACCOUNT_FILE="/absolute/path/to/service-account.json"
+# or:
+FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
 ```
 
-For hosted environments where mounting a JSON file is awkward, set
-`FIREBASE_SERVICE_ACCOUNT_JSON` to the full service account JSON string instead of
-`FIREBASE_SERVICE_ACCOUNT_FILE`.
-
-For local emulator development:
+For local Firestore emulator development:
 
 ```bash
 SECONDBRAIN_STORAGE_BACKEND=firestore
@@ -108,28 +122,79 @@ FIREBASE_PROJECT_ID="secondbrain-local"
 FIRESTORE_EMULATOR_HOST="127.0.0.1:8080"
 ```
 
-Firestore collections used by the backend are `accounts`, `sources`, `chunks`, `posts`, and
-`graphs`. Each ingested record is scoped by `account_id`; the MVP currently uses the mock
-account id `mock-user`.
+Firestore collections used by the backend are `accounts`, `sources`, `chunks`, `posts`, and `graphs`. Records are scoped by `account_id`.
+
+## Original File Storage
+
+PDF uploads and scraped-link Markdown snapshots are stored outside the database, then linked from source metadata.
+
+The default provider is GitHub:
+
+```bash
+ORIGINAL_FILE_STORAGE=github
+GITHUB_TOKEN="your-github-token"
+GITHUB_STORAGE_REPO="owner/repo"
+GITHUB_STORAGE_BRANCH="main"
+GITHUB_STORAGE_PATH_PREFIX="uploads"
+```
+
+To use Google Drive instead:
+
+```bash
+ORIGINAL_FILE_STORAGE=drive
+GOOGLE_DRIVE_FOLDER_ID="your-drive-folder-id"
+GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/absolute/path/to/drive-service-account.json"
+# or:
+GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
+```
+
+For Drive storage, share the target folder with the service account email before ingesting PDFs or links.
+
+## API
+
+- `GET /account`
+- `GET /sources`
+- `GET /sources/{source_id}`
+- `POST /sources`
+  - accepts JSON or multipart form data
+  - fields: `type=note|pdf|link`, `title`, `text`, `source_url`, `file`
+- `PATCH /sources/{source_id}`
+  - JSON body: `{ "content": "updated memory content" }`
+- `GET /posts`
+- `GET /graph`
+- `POST /chat`
+  - JSON body: `{ "message": "...", "history": [] }`
+- `POST /chat/stream`
+  - streams server-sent events for text, tool calls, trace steps, and final citations
 
 ## CLI Ingestion
 
 ```bash
 uv run python -m backend.ingest note --account-id "cli-user" --title "Transformers" --text "Self-attention connects tokens."
 uv run python -m backend.ingest pdf --account-id "cli-user" --title "Paper" --file ./paper.pdf
+uv run python -m backend.ingest link --account-id "cli-user" --title "Article" --source-url "https://example.com"
 ```
 
 ## Test
+
+Backend tests:
 
 ```bash
 uv run pytest
 ```
 
+Frontend typecheck and build:
+
+```bash
+cd frontend
+npm run build
+```
+
 ## Documentation
 
-For more detailed information about how the application works, please refer to the following documents in the `documents/` folder:
+More technical notes are in `documents/`:
+
 - [Agent Workflow](documents/agent_workflow.md)
 - [Ingestion Workflow](documents/ingestion_workflow.md)
 - [System Architectures](documents/architectures.md)
-- [App Architecture](documents/app_architecture.md)
 - [Knowledge Graph](documents/knowledge_graph.md)
