@@ -98,7 +98,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #0d0f14;
+          background: var(--color-background);
           overflow: hidden;
           font-family: 'Outfit', 'Inter', sans-serif;
           z-index: 9999;
@@ -109,15 +109,15 @@ export function LoginView({ onLogin }: LoginViewProps) {
           position: absolute;
           border-radius: 50%;
           filter: blur(120px);
-          opacity: 0.15;
-          mix-blend-mode: screen;
+          opacity: 0.4;
+          mix-blend-mode: multiply;
           pointer-events: none;
         }
         
         .blob-1 {
           width: 500px;
           height: 500px;
-          background: #4f46e5; /* Indigo */
+          background: hsl(213 94% 68%); /* Accent color */
           top: -10%;
           left: -10%;
           animation: float-slow 20s infinite alternate;
@@ -126,7 +126,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
         .blob-2 {
           width: 600px;
           height: 600px;
-          background: #3b82f6; /* Blue */
+          background: hsl(210 100% 85%);
           bottom: -15%;
           right: -10%;
           animation: float-slow 25s infinite alternate-reverse;
@@ -135,7 +135,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
         .blob-3 {
           width: 400px;
           height: 400px;
-          background: #8b5cf6; /* Violet */
+          background: hsl(220 100% 80%);
           top: 30%;
           left: 50%;
           transform: translate(-50%, -50%);
@@ -145,13 +145,13 @@ export function LoginView({ onLogin }: LoginViewProps) {
         /* Glassmorphic Card */
         .glass-card {
           position: relative;
-          background: rgba(22, 28, 45, 0.45);
+          background: rgba(255, 255, 255, 0.7);
           backdrop-filter: blur(24px);
           -webkit-backdrop-filter: blur(24px);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          border: 1px solid var(--color-border);
           box-shadow: 
-            0 4px 30px rgba(0, 0, 0, 0.4),
-            inset 0 1px 1px rgba(255, 255, 255, 0.1);
+            0 8px 32px rgba(0, 0, 0, 0.05),
+            inset 0 1px 1px rgba(255, 255, 255, 0.4);
           border-radius: 24px;
           padding: 3rem 2.5rem;
           width: 100%;
@@ -161,26 +161,24 @@ export function LoginView({ onLogin }: LoginViewProps) {
         }
 
         .logo-badge {
-          background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
-          border: 1px solid rgba(139, 92, 246, 0.25);
+          background: var(--color-secondary);
+          border: 1px solid var(--color-border);
           padding: 1.25rem;
           border-radius: 20px;
-          color: #a78bfa;
-          box-shadow: 0 8px 32px 0 rgba(139, 92, 246, 0.1);
+          color: var(--color-primary);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
 
         .title-text {
           font-size: 2.25rem;
           font-weight: 800;
           letter-spacing: -0.025em;
-          background: linear-gradient(to right, #ffffff, #c7d2fe, #e0e7ff);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: var(--color-foreground);
           margin-bottom: 0.75rem;
         }
 
         .subtitle-text {
-          color: #94a3b8;
+          color: var(--color-muted-foreground);
           font-size: 0.95rem;
           line-height: 1.6;
           margin-bottom: 2rem;
@@ -188,9 +186,9 @@ export function LoginView({ onLogin }: LoginViewProps) {
 
         .error-badge {
           width: 100%;
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.2);
-          color: #fca5a5;
+          background: hsl(0 100% 98%);
+          border: 1px solid var(--color-destructive);
+          color: var(--color-destructive);
           padding: 0.75rem 1rem;
           border-radius: 12px;
           font-size: 0.85rem;
@@ -202,23 +200,23 @@ export function LoginView({ onLogin }: LoginViewProps) {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #ffffff;
-          color: #0f172a;
+          background: var(--color-background);
+          color: var(--color-foreground);
           font-weight: 600;
           font-size: 0.95rem;
           padding: 0.875rem 1.5rem;
           border-radius: 14px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid var(--color-border);
           transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
 
         .google-btn:hover:not(:disabled) {
           transform: translateY(-2px);
           box-shadow: 
-            0 12px 24px rgba(0, 0, 0, 0.15),
-            0 0 0 4px rgba(99, 102, 241, 0.25);
-          background: #f8fafc;
+            0 12px 24px rgba(0, 0, 0, 0.1),
+            0 0 0 4px var(--color-muted);
+          background: var(--color-background);
         }
 
         .google-btn:active:not(:disabled) {
@@ -237,8 +235,8 @@ export function LoginView({ onLogin }: LoginViewProps) {
         }
 
         @keyframes pulse-slow {
-          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.12; }
-          50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.2; }
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
+          50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.5; }
         }
 
         .animate-pulse-subtle {
@@ -273,8 +271,8 @@ export function LoginView({ onLogin }: LoginViewProps) {
         .spinner {
           width: 20px;
           height: 20px;
-          border: 2px solid rgba(15, 23, 42, 0.1);
-          border-top-color: #0f172a;
+          border: 2px solid rgba(0, 0, 0, 0.1);
+          border-top-color: var(--color-primary);
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
         }
