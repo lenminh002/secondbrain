@@ -63,7 +63,7 @@ export type PostRecord = {
 export type GraphNode = {
   id: string;
   label: string;
-  type: "source" | "concept";
+  type: "source" | "concept" | "tag";
 };
 
 export type PositionedGraphNode = GraphNode & {
@@ -96,7 +96,7 @@ import type { SimulationLinkDatum, SimulationNodeDatum } from "d3-force";
 export type SimNode = SimulationNodeDatum & {
   id: string;
   label: string;
-  type: "source" | "concept";
+  type: "source" | "concept" | "tag";
 };
 
 export type SimLink = SimulationLinkDatum<SimNode> & {

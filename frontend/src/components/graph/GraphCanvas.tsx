@@ -24,6 +24,7 @@ type GraphCanvasProps = {
   nodes: SimNode[];
   activeNodeId: string | null;
   dragState: DragState | null;
+  filteredNodeIds: Set<string> | null;
   isConnectedNode: (nodeId: string) => boolean;
   onNodePointerDown: (event: PointerEvent<SVGGElement>, node: SimNode) => void;
   onNodeClick: (event: MouseEvent<SVGGElement>, nodeId: string) => void;
@@ -47,6 +48,7 @@ export function GraphCanvas({
   nodes,
   activeNodeId,
   dragState,
+  filteredNodeIds,
   isConnectedNode,
   onNodePointerDown,
   onNodeClick,
@@ -79,6 +81,7 @@ export function GraphCanvas({
           nodes={nodes}
           activeNodeId={activeNodeId}
           dragState={dragState}
+          filteredNodeIds={filteredNodeIds}
           isConnectedNode={isConnectedNode}
           onNodePointerDown={onNodePointerDown}
           onNodeClick={onNodeClick}

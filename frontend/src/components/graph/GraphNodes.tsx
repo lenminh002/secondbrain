@@ -8,6 +8,7 @@ type GraphNodesProps = {
   activeNodeId: string | null;
   dragState: DragState | null;
   isConnectedNode: (nodeId: string) => boolean;
+  filteredNodeIds: Set<string> | null;
   onNodePointerDown: (event: PointerEvent<SVGGElement>, node: SimNode) => void;
   onNodeClick: (event: MouseEvent<SVGGElement>, nodeId: string) => void;
   onNodeEnter: (id: string) => void;
@@ -19,6 +20,7 @@ export function GraphNodes({
   activeNodeId,
   dragState,
   isConnectedNode,
+  filteredNodeIds,
   onNodePointerDown,
   onNodeClick,
   onNodeEnter,
@@ -31,7 +33,8 @@ export function GraphNodes({
         const active = isConnectedNode(node.id);
         const selected = activeNodeId === node.id;
         const dragging = dragState?.mode === "node" && dragState.nodeId === node.id;
-        const radius = node.type === "source" ? 24 : 15;
+        const searchDimmed = filteredNodeIds !== null && !filteredNodeIds.has(node.id);
+        const radius = node.type === "source" ? 24 : node.type === "tag" ? 18 : 15;
         return (
           <g
             className={cn("graph-node", node.type, active ? "is-active" : "is-dimmed", selected && "is-selected", dragging && "is-dragging")}
@@ -41,6 +44,7 @@ export function GraphNodes({
             onPointerDown={(event) => onNodePointerDown(event, node)}
             onPointerEnter={() => onNodeEnter(node.id)}
             onPointerLeave={onNodeLeave}
+            style={searchDimmed ? { opacity: 0.1 } : undefined}
             transform={`translate(${node.x}, ${node.y})`}
           >
             <circle r={radius} />

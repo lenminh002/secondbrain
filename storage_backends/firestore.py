@@ -100,6 +100,7 @@ class FirestoreStorageBackend(StorageBackend):
         chunks: list[dict[str, Any]],
         post: dict[str, Any],
         concepts: list[str],
+        tags: list[str] | None = None,
     ) -> None:
         source_id = str(source["id"])
         chunk_query = (
@@ -122,5 +123,5 @@ class FirestoreStorageBackend(StorageBackend):
             {**post, "account_id": account_id}
         )
 
-        graph = merge_graph(self.load_graph(account_id), source, concepts)
+        graph = merge_graph(self.load_graph(account_id), source, concepts, tags=tags)
         self.save_graph(account_id, graph)

@@ -140,12 +140,17 @@ class MemoryStorageBackend(StorageBackend):
                     {"id": "concept-retrieval", "label": "Retrieval", "type": "concept"},
                     {"id": "concept-knowledge-graph", "label": "Knowledge Graph", "type": "concept"},
                     {"id": "concept-attention", "label": "Attention", "type": "concept"},
+                    {"id": "tag-machine-learning", "label": "machine-learning", "type": "tag"},
+                    {"id": "tag-information-retrieval", "label": "information-retrieval", "type": "tag"},
                 ],
                 "edges": [
                     {"source": "source-mock-source-rag", "target": "concept-retrieval", "relation": "mentions"},
                     {"source": "source-mock-source-rag", "target": "concept-knowledge-graph", "relation": "mentions"},
                     {"source": "source-mock-source-attention", "target": "concept-retrieval", "relation": "mentions"},
                     {"source": "source-mock-source-attention", "target": "concept-attention", "relation": "mentions"},
+                    {"source": "source-mock-source-rag", "target": "tag-machine-learning", "relation": "tagged_as"},
+                    {"source": "source-mock-source-rag", "target": "tag-information-retrieval", "relation": "tagged_as"},
+                    {"source": "source-mock-source-attention", "target": "tag-machine-learning", "relation": "tagged_as"},
                 ],
             }
         }
@@ -242,6 +247,7 @@ class MemoryStorageBackend(StorageBackend):
         chunks: list[dict[str, Any]],
         post: dict[str, Any],
         concepts: list[str],
+        tags: list[str] | None = None,
     ) -> None:
         with self._lock:
             self.chunks = {
@@ -266,4 +272,5 @@ class MemoryStorageBackend(StorageBackend):
                 self.graphs.get(account_id, {"nodes": [], "edges": []}),
                 source,
                 concepts,
+                tags=tags,
             )

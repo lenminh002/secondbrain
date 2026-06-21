@@ -25,6 +25,7 @@ def merge_graph(
     graph: dict[str, list[dict[str, Any]]],
     source: dict[str, Any],
     concepts: list[str],
+    tags: list[str] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     nodes = graph.get("nodes") if isinstance(graph.get("nodes"), list) else []
     edges = graph.get("edges") if isinstance(graph.get("edges"), list) else []
@@ -53,6 +54,14 @@ def merge_graph(
         key = (source_node_id, concept_id, "mentions")
         if key not in edge_keys:
             edges.append({"source": source_node_id, "target": concept_id, "relation": "mentions"})
+            edge_keys.add(key)
+
+    for tag in (tags or []):
+        tag_id = f"tag-{slugify(tag)}"
+        nodes_by_id[tag_id] = {"id": tag_id, "label": tag, "type": "tag"}
+        key = (source_node_id, tag_id, "tagged_as")
+        if key not in edge_keys:
+            edges.append({"source": source_node_id, "target": tag_id, "relation": "tagged_as"})
             edge_keys.add(key)
 
     return {"nodes": list(nodes_by_id.values()), "edges": edges}

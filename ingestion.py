@@ -11,6 +11,7 @@ from services.enrichment import enrich_content
 from storage import (
     append_source,
     commit_source_artifacts,
+    load_graph,
     save_source_result,
 )
 
@@ -112,6 +113,7 @@ def _replace_source_artifacts(source: dict[str, Any], content: str, enrichment: 
         chunks,
         post,
         enrichment["concepts"],
+        tags=enrichment.get("tags", []),
     )
 
 
@@ -201,7 +203,9 @@ def process_source(
                 source["title"] = filename.rsplit(".", 1)[0]
 
         _set_progress(source, "enriching")
-        enrichment = enrich_content(source_type, source["title"], source.get("source_url") or source_url, content)
+        existing_graph = load_graph(account_id)
+        existing_tags = [n["label"] for n in existing_graph.get("nodes", []) if n.get("type") == "tag"]
+        enrichment = enrich_content(source_type, source["title"], source.get("source_url") or source_url, content, existing_tags=existing_tags)
 
         # Persist raw content and structured enrichment on the source record
         source["content"] = content
@@ -210,6 +214,7 @@ def process_source(
         source["concepts"] = enrichment["concepts"]
         source["claims"] = enrichment["claims"]
         source["questions"] = enrichment["questions"]
+        source["tags"] = enrichment.get("tags", [])
 
         _replace_source_artifacts(source, content, enrichment)
         source["status"] = "ready"
@@ -232,11 +237,14 @@ def edit_source_content(source: dict[str, Any], content: str) -> dict[str, Any]:
     source_type = str(source["type"])
     source["error"] = None
     _set_progress(source, "enriching")
+    existing_graph = load_graph(str(source["account_id"]))
+    existing_tags = [n["label"] for n in existing_graph.get("nodes", []) if n.get("type") == "tag"]
     enrichment = enrich_content(
         source_type,
         str(source.get("title") or "Untitled source"),
         source.get("source_url"),
         content,
+        existing_tags=existing_tags,
     )
 
     source["content"] = content
@@ -245,6 +253,7 @@ def edit_source_content(source: dict[str, Any], content: str) -> dict[str, Any]:
     source["concepts"] = enrichment["concepts"]
     source["claims"] = enrichment["claims"]
     source["questions"] = enrichment["questions"]
+    source["tags"] = enrichment.get("tags", [])
 
     _replace_source_artifacts(source, content, enrichment)
     source["status"] = "ready"

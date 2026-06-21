@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { Card } from "@/components/ui/card";
 import { buildAdjacency } from "@/lib/graph-layout";
@@ -18,6 +18,7 @@ export function GraphView({
   const simulation = useGraphSimulation(graph);
   const viewport = useGraphViewport();
   const interactions = useGraphInteractions({ viewport, simulation });
+  const [filterText, setFilterText] = useState("");
 
   const adjacency = useMemo(() => buildAdjacency(graph.edges), [graph.edges]);
 
@@ -26,6 +27,12 @@ export function GraphView({
   const activeNeighbors = activeNodeId ? adjacency.neighbors.get(activeNodeId) ?? new Set<string>() : new Set<string>();
   const selectedNode = activeNodeId ? simulation.byId[activeNodeId] : null;
   const connectedNodes = [...activeNeighbors].map((id) => simulation.byId[id]).filter(Boolean);
+
+  const filteredNodeIds = useMemo<Set<string> | null>(() => {
+    const q = filterText.trim().toLowerCase();
+    if (!q) return null;
+    return new Set(simulation.nodes.filter((n) => n.label.toLowerCase().includes(q)).map((n) => n.id));
+  }, [filterText, simulation.nodes]);
 
   function isConnectedNode(nodeId: string) {
     return !activeNodeId || nodeId === activeNodeId || activeNeighbors.has(nodeId);
@@ -54,6 +61,8 @@ export function GraphView({
         onZoomIn={() => viewport.zoomBy(1.06)}
         onZoomOut={() => viewport.zoomBy(0.94)}
         onReset={resetView}
+        filterText={filterText}
+        onFilterChange={setFilterText}
       />
       <div className="relative">
         <GraphCanvas
@@ -71,6 +80,7 @@ export function GraphView({
           byId={simulation.byId}
           activeNodeId={activeNodeId}
           dragState={interactions.dragState}
+          filteredNodeIds={filteredNodeIds}
           isConnectedEdge={isConnectedEdge}
           isConnectedNode={isConnectedNode}
           onNodePointerDown={interactions.onNodePointerDown}

@@ -177,6 +177,21 @@ button:disabled,
   stroke-width: 5;
 }
 
+.graph-node.tag circle {
+  fill: hsl(38 85% 55%);
+}
+
+.graph-edge.tagged-as line {
+  stroke: hsl(38 85% 55%);
+  stroke-dasharray: 5 3;
+  stroke-width: 2;
+}
+
+.graph-edge.tagged-as.is-active line {
+  stroke: hsl(38 72% 40%);
+  stroke-width: 2.5;
+}
+
 .graph-node.is-dimmed {
   opacity: 0.18;
 }

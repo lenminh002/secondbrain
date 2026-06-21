@@ -5,21 +5,36 @@ export const VIEWBOX_H = 680;
 export const CENTER_X = 520;
 export const CENTER_Y = 340;
 
+// Golden angle in radians — distributes points without symmetric overlaps
+const GOLDEN_ANGLE = 2.39996322972865;
+
 export function computeInitialPositions(nodes: GraphNode[]): GraphNodePositions {
   const sourceNodes = nodes.filter((n) => n.type === "source");
+  const tagNodes = nodes.filter((n) => n.type === "tag");
   const conceptNodes = nodes.filter((n) => n.type === "concept");
-  const sourceRadius = Math.max(88, sourceNodes.length * 16);
-  const conceptRadius = Math.max(210, conceptNodes.length * 11);
+
+  const sourceRadius = Math.max(140, sourceNodes.length * 22);
+  const tagRadius = Math.max(230, tagNodes.length * 18);
+  const conceptRadius = Math.max(310, conceptNodes.length * 13);
+
   const positions: GraphNodePositions = {};
+
   sourceNodes.forEach((node, i) => {
-    const angle = (i / Math.max(sourceNodes.length, 1)) * Math.PI * 2 - Math.PI / 2;
+    const angle = i * GOLDEN_ANGLE;
     positions[node.id] = { x: CENTER_X + Math.cos(angle) * sourceRadius, y: CENTER_Y + Math.sin(angle) * sourceRadius };
   });
+
+  tagNodes.forEach((node, i) => {
+    const angle = i * GOLDEN_ANGLE + Math.PI / 4;
+    positions[node.id] = { x: CENTER_X + Math.cos(angle) * tagRadius, y: CENTER_Y + Math.sin(angle) * tagRadius };
+  });
+
   conceptNodes.forEach((node, i) => {
-    const ring = conceptRadius + (i % 3) * 46;
-    const angle = (i / Math.max(conceptNodes.length, 1)) * Math.PI * 2 + Math.PI / 8;
+    const ring = conceptRadius + (i % 3) * 52;
+    const angle = i * GOLDEN_ANGLE + Math.PI / 6;
     positions[node.id] = { x: CENTER_X + Math.cos(angle) * ring, y: CENTER_Y + Math.sin(angle) * ring };
   });
+
   return positions;
 }
 

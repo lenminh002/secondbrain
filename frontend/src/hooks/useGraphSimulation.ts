@@ -40,20 +40,27 @@ export function useGraphSimulation(graph: KnowledgeGraph): GraphSimulationContro
       .filter((e) => nodeById.has(e.source) && nodeById.has(e.target))
       .map((e) => ({ source: e.source, target: e.target, relation: e.relation }));
 
+    const tickRef = { count: 0 };
     const sim = forceSimulation<SimNode>(nodes)
-      .force("charge", forceManyBody<SimNode>().strength(-220))
+      .force("charge", forceManyBody<SimNode>().strength(-420))
       .force(
         "link",
         forceLink<SimNode, SimLink>(links)
           .id((d) => d.id)
-          .distance(90)
-          .strength(0.6),
+          .distance(155)
+          .strength(0.3),
       )
       .force("center", forceCenter(CENTER_X, CENTER_Y))
-      .force("collide", forceCollide<SimNode>((d) => (d.type === "source" ? 30 : 20)))
-      .velocityDecay(0.4)
+      .force(
+        "collide",
+        forceCollide<SimNode>((d) =>
+          d.type === "source" ? 48 : d.type === "tag" ? 38 : 32,
+        ),
+      )
+      .velocityDecay(0.35)
       .on("tick", () => {
-        forceUpdate((t) => t + 1);
+        tickRef.count += 1;
+        if (tickRef.count % 3 === 0) forceUpdate((t) => t + 1);
       });
 
     simRef.current = sim;

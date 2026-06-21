@@ -61,5 +61,6 @@ class StorageBackend(ABC):
         chunks: list[dict[str, Any]],
         post: dict[str, Any],
         concepts: list[str],
+        tags: list[str] | None = None,
     ) -> None:
         raise NotImplementedError

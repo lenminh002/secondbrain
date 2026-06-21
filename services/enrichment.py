@@ -48,13 +48,23 @@ def _fallback_enrichment(title: str, content: str) -> dict[str, Any]:
         "claims": usable[:4],
         "questions": ["What should I connect this to next?"],
         "social_post": f"Added a new note on {title}: {summary[:220]}",
+        "tags": [],
     }
 
 
-def enrich_content(source_type: str, title: str, source_url: str | None, content: str) -> dict[str, Any]:
+def enrich_content(
+    source_type: str,
+    title: str,
+    source_url: str | None,
+    content: str,
+    existing_tags: list[str] | None = None,
+) -> dict[str, Any]:
     client = _client()
     if client is None:
         return _fallback_enrichment(title, content)
+
+    existing_tags = existing_tags or []
+    existing_tags_str = ", ".join(existing_tags) if existing_tags else "none yet"
 
     prompt = f"""
 You are turning a consumed knowledge source into a personal knowledge-base entry.
@@ -63,6 +73,8 @@ Source type: {source_type}
 Title: {title}
 Source URL: {source_url or "none"}
 
+Existing tags already in the knowledge base: {existing_tags_str}
+
 Return ONLY valid JSON in this shape:
 {{
   "summary": "one concise paragraph",
@@ -70,8 +82,16 @@ Return ONLY valid JSON in this shape:
   "concepts": ["canonical concept/entity name"],
   "claims": ["claim or useful assertion"],
   "questions": ["open question for future learning"],
-  "social_post": "one social-media style post in first person, under 900 characters"
+  "social_post": "one social-media style post in first person, under 900 characters",
+  "tags": ["broad-topic-tag"]
 }}
+
+Tags rules (IMPORTANT):
+- Choose 2–4 broad topic tags for this source.
+- PREFER exact or near-exact matches from the existing tags list above. Reuse them.
+- Only create a new tag if no existing tag captures the topic. Max 1–2 new tags per source.
+- Tags must be specific topics, not meta-descriptions. Bad: "interesting", "note", "new", "content", "file". Good: "machine-learning", "productivity", "cognitive-science", "distributed-systems".
+- Use lowercase kebab-case for new tags.
 
 Content:
 {content[:30000]}
@@ -100,4 +120,5 @@ Content:
         "claims": _as_string_list(parsed.get("claims")),
         "questions": _as_string_list(parsed.get("questions")),
         "social_post": str(parsed.get("social_post", "")).strip() or fallback["social_post"],
+        "tags": _as_string_list(parsed.get("tags"), limit=4),
     }
