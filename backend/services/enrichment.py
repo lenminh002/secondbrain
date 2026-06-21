@@ -5,6 +5,11 @@ import re
 from typing import Any
 
 from backend.services.anthropic_client import MODEL_NAME, _client, _text_from_content
+from backend.services.concept_quality import (
+    COMMON_CONCEPT_STOPWORDS,
+    GENERIC_CONCEPT_WORDS,
+    filter_quality_concepts,
+)
 
 
 def _strip_code_fence(text: str) -> str:
@@ -47,19 +52,7 @@ def _extract_list_from_tag(text: str, tag: str) -> list[str]:
 
 
 def _fallback_enrichment(title: str, content: str) -> dict[str, Any]:
-    stopwords = {
-        "about", "above", "after", "again", "against", "all", "also", "and", "any", "are", "because",
-        "been", "before", "being", "below", "between", "both", "but", "could", "did", "does", "doing",
-        "down", "during", "each", "few", "for", "from", "further", "had", "has", "have", "having",
-        "here", "hers", "him", "his", "how", "its", "just", "like", "look", "more", "most", "myself",
-        "only", "other", "our", "ours", "out", "over", "own", "same", "she", "should", "some", "such",
-        "than", "that", "the", "their", "theirs", "them", "themselves", "then", "there", "these",
-        "they", "this", "those", "through", "too", "under", "until", "very", "was", "were", "what",
-        "when", "where", "which", "while", "who", "whom", "why", "with", "would", "you", "your",
-        "yours", "yourself", "yourselves", "still", "think", "people", "agents", "look", "like", "this",
-        "many", "much", "good", "great", "well", "know", "make", "work", "time", "year", "back", "first",
-        "into", "your", "them", "want", "more", "when", "here", "who", "will", "need", "even", "does"
-    }
+    stopwords = COMMON_CONCEPT_STOPWORDS | GENERIC_CONCEPT_WORDS
 
     sentences = re.split(r"(?<=[.!?])\s+", content.strip())
     usable = [sentence.strip() for sentence in sentences if sentence.strip()]
@@ -87,6 +80,7 @@ def _fallback_enrichment(title: str, content: str) -> dict[str, Any]:
             if len(concepts) >= 8:
                 break
                 
+    concepts = filter_quality_concepts(concepts, limit=8)
     key_ideas = usable[:5] or [summary]
     return {
         "summary": summary,
@@ -216,6 +210,12 @@ Tags rules (IMPORTANT):
 - Tags must be specific topics, not meta-descriptions. Bad: "interesting", "note", "new", "content", "file". Good: "machine-learning", "productivity", "cognitive-science", "distributed-systems".
 - Use lowercase kebab-case for new tags.
 
+Concept rules (IMPORTANT):
+- Concepts must be nouns, noun phrases, proper names, or canonical entity names.
+- Good: "GraphRAG", "Ada Lovelace", "Knowledge Graph", "Retrieval Augmented Generation".
+- Bad: pronouns, common words, filler, verbs, adjectives, or generic labels such as "this", "they", "good", "thing", "knowledge", "content", "work", "people".
+- Return 4-10 concepts. Prefer fewer precise concepts over noisy labels.
+
 Content:
 {content[:30000]}
 """.strip()
@@ -257,7 +257,7 @@ Content:
     return {
         "summary": parsed.get("summary", "").strip() or fallback["summary"],
         "key_ideas": parsed.get("key_ideas") or fallback["key_ideas"],
-        "concepts": parsed.get("concepts") or fallback["concepts"],
+        "concepts": filter_quality_concepts(parsed.get("concepts") or fallback["concepts"], limit=10),
         "claims": parsed.get("claims") or fallback["claims"],
         "questions": parsed.get("questions") or fallback["questions"],
         "social_post": parsed.get("social_post", "").strip() or fallback["social_post"],
@@ -295,4 +295,3 @@ Scraped Content:
         return _text_from_content(message.content)
     except Exception as exc:
         return f"# Scraped Content from {url}\n\nError processing with Claude: {exc}\n\nRaw text snippet:\n\n{html_content[:1500]}"
-

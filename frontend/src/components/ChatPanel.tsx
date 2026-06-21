@@ -53,50 +53,6 @@ export function ChatPanel({
 
   return (
     <Card className="flex h-full min-h-0 flex-col rounded-none border-0 shadow-none lg:rounded-none relative">
-      <CardHeader className={cn("border-b", toggleMinimize && "pr-14")}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5" />
-              <CardTitle>The Librarian</CardTitle>
-            </div>
-          </div>
-          {archiveChatHistory && (
-            <Button
-              className="h-8 w-8 shrink-0"
-              disabled={!hasCompletedMessages || isChatting || isArchivingChat}
-              onClick={archiveChatHistory}
-              type="button"
-              variant="outline"
-              size="icon"
-              title="Archive & Clear"
-            >
-              {isArchivingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            </Button>
-          )}
-          {!archiveChatHistory && clearChatHistory && (
-            <Button
-              className="h-8 shrink-0 px-2 text-xs"
-              disabled={!hasCompletedMessages || isChatting}
-              onClick={clearChatHistory}
-              type="button"
-              variant="outline"
-            >
-              Clear
-            </Button>
-          )}
-        </div>
-        {toggleMinimize && (
-          <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={toggleMinimize}>
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-          </Button>
-        )}
-      </CardHeader>
-      {chatArchiveError && (
-        <div className="border-b border-destructive/20 bg-destructive/5 px-4 py-2 text-xs text-destructive">
-          {chatArchiveError}
-        </div>
-      )}
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-3 p-4">
           {chatLog.length ? (
@@ -190,7 +146,7 @@ export function ChatPanel({
             })
           ) : (
             <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-              Ask what your saved knowledge says about a topic.
+              Hi. I'm the Librarian, Second Brain's AI Agent. Tell me to do something.
             </div>
           )}
         </div>

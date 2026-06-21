@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { GitBranch, FileText } from "lucide-react";
+import { Bot, FileText } from "lucide-react";
 
 import { MobileNav, SidebarNav, TopBar } from "@/components/navigation";
+import { AddSelectionToChat } from "@/components/AddSelectionToChat";
 import { ChatPanel } from "@/components/ChatPanel";
 import { IngestSourceDrawer } from "@/components/IngestSourceDrawer";
 import { HomeAside, HomeView } from "@/components/HomeView";
@@ -59,6 +60,7 @@ function AuthenticatedApp() {
     setNotice,
     refresh,
     refreshWithNotice,
+    isLoading,
   } = useKnowledgeBase();
 
   const {
@@ -130,9 +132,20 @@ function AuthenticatedApp() {
     />
   );
 
+  function addSelectionToChat(quotedText: string) {
+    setChatInput((current) => current.trim() ? `${current.trim()}\n\n${quotedText}` : quotedText);
+    setIsChatMinimized(false);
+    if (activeView === "notes") {
+      setMemoriesSidebarTab("chat");
+    } else {
+      setActiveView("chat");
+    }
+  }
+
   return (
     <TooltipProvider>
       <div className="app-frame pb-20 lg:pb-0">
+        <AddSelectionToChat onAdd={addSelectionToChat} />
         <TopBar account={account} />
         <div
           className={activeView === "home" ? "social-grid" : activeView === "ingest" ? "ingest-grid" : activeView === "chat" ? "chat-grid" : "notes-grid"}
@@ -159,6 +172,7 @@ function AuthenticatedApp() {
               refresh={refreshWithNotice}
               setActiveView={setActiveView}
               onIngestClick={() => setIsIngestOpen(true)}
+              isLoading={isLoading}
             />
           ) : activeView === "chat" ? (
             <div className="h-[calc(100vh-74px)]">
@@ -203,18 +217,41 @@ function AuthenticatedApp() {
               sources={sources}
             />
           ) : activeView === "notes" ? (
-            <aside className="sticky top-[74px] hidden h-[calc(100vh-74px)] lg:block border-l bg-background w-[var(--chat-width,360px)]">
-              {memoriesSidebarTab === "chat" ? (
-                chatPanel
-              ) : (
-                <ScrollArea className="h-full">
+            <aside className="sticky top-[74px] hidden h-[calc(100vh-74px)] lg:flex lg:flex-col border-l bg-background w-[var(--chat-width,360px)]">
+              <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b px-4">
+                <div className="flex min-w-0 items-center gap-2 text-lg font-bold">
+                  {memoriesSidebarTab === "chat" ? <Bot className="h-5 w-5 shrink-0" /> : <FileText className="h-5 w-5 shrink-0" />}
+                  <span className="truncate">{memoriesSidebarTab === "chat" ? "Librarian" : "Vault"}</span>
+                </div>
+                <div className="flex shrink-0 rounded-lg bg-muted p-1">
+                  <Button
+                    className="h-8 px-3 text-xs"
+                    onClick={() => setMemoriesSidebarTab("vault")}
+                    size="sm"
+                    type="button"
+                    variant={memoriesSidebarTab === "vault" ? "secondary" : "ghost"}
+                  >
+                    Vault
+                  </Button>
+                  <Button
+                    className="h-8 px-3 text-xs"
+                    onClick={() => setMemoriesSidebarTab("chat")}
+                    size="sm"
+                    type="button"
+                    variant={memoriesSidebarTab === "chat" ? "secondary" : "ghost"}
+                  >
+                    Librarian
+                  </Button>
+                </div>
+              </div>
+              <div className="min-h-0 flex-1">
+                {memoriesSidebarTab === "chat" ? (
+                  chatPanel
+                ) : (
+                  <ScrollArea className="h-full">
                   <div className="space-y-5 p-4">
                     <div>
-                      <div className="flex items-center gap-2 text-lg font-bold">
-                        <FileText className="h-6 w-6" />
-                        Vault
-                      </div>
-                      <div className="space-y-4 mt-6">
+                      <div className="space-y-4">
                         {(["note", "pdf"] as const).map((type) => (
                           <div key={type}>
                             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{type}</div>
@@ -235,7 +272,7 @@ function AuthenticatedApp() {
                                         <span className="block truncate font-medium">{source.title}</span>
                                         <span className="text-xs text-muted-foreground">{formatDate(source.created_at)}</span>
                                       </span>
-                                      <StatusBadge status={source.status} />
+                                      {source.status !== "ready" && <StatusBadge status={source.status} />}
                                     </span>
                                   </button>
                                 ))
@@ -248,27 +285,19 @@ function AuthenticatedApp() {
                       </div>
                     </div>
                   </div>
-                </ScrollArea>
-              )}
+                  </ScrollArea>
+                )}
+              </div>
             </aside>
           ) : null}
         </div>
-        <MobileNav activeView={activeView} setActiveView={setActiveView} onIngestClick={() => setIsIngestOpen(true)} />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              className="fixed bottom-20 right-4 z-40 rounded-full shadow-lg lg:hidden"
-              onClick={() => {
-                setActiveView("notes");
-                setNotesMode("graph");
-              }}
-              size="icon"
-            >
-              <GitBranch className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Graphify</TooltipContent>
-        </Tooltip>
+        <MobileNav
+          activeView={activeView}
+          setActiveView={setActiveView}
+          onIngestClick={() => setIsIngestOpen(true)}
+          notesMode={notesMode}
+          setNotesMode={setNotesMode}
+        />
         <IngestSourceDrawer
           isOpen={isIngestOpen}
           onOpenChange={setIsIngestOpen}

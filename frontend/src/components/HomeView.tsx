@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { AccountRecord, ActiveView, PostRecord, SourceRecord } from "@/types";
 
 export function HomeView({
@@ -15,6 +16,7 @@ export function HomeView({
   refresh,
   setActiveView,
   onIngestClick,
+  isLoading,
 }: {
   account: AccountRecord | null;
   notice: string;
@@ -22,19 +24,42 @@ export function HomeView({
   refresh: () => void;
   setActiveView: (view: ActiveView) => void;
   onIngestClick: () => void;
+  isLoading?: boolean;
 }) {
   return (
     <main className="min-h-[calc(100vh-74px)]">
       <div className="h-[calc(100vh-128px)] overflow-y-auto no-scrollbar">
-      <div className="flex h-14 items-center justify-between px-6">
-        <h1 className="font-bold">Home</h1>
-        <Button onClick={refresh} size="icon" variant="outline">
-          <RefreshCcw className="h-4 w-4" />
-        </Button>
-      </div>
+        <div className="flex h-14 items-center justify-between px-6">
+          <h1 className="font-bold">Home</h1>
+          <Button onClick={refresh} size="icon" variant="outline" disabled={isLoading}>
+            <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+          </Button>
+        </div>
         <div className="mx-auto max-w-2xl space-y-4 p-5">
           {notice && <div className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive break-words">{notice}</div>}
-          {posts.length ? (
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader className="flex-row gap-3 space-y-0">
+                    <div className="h-10 w-10 rounded-full bg-muted" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-32 rounded bg-muted" />
+                      <div className="h-3 w-20 rounded bg-muted" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="h-6 w-3/4 rounded bg-muted" />
+                    <div className="h-40 w-full rounded-lg bg-muted" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-full rounded bg-muted" />
+                      <div className="h-4 w-5/6 rounded bg-muted" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : posts.length ? (
             posts.map((post) => (
               <Card key={post.id}>
                 <CardHeader className="flex-row gap-3 space-y-0">
@@ -60,7 +85,10 @@ export function HomeView({
                       />
                     </div>
                   )}
-                  <div className="prose prose-sm dark:prose-invert max-w-none [&_*]:text-inherit text-current">
+                  <div
+                    className="prose prose-sm dark:prose-invert max-w-none [&_*]:text-inherit text-current"
+                    data-add-to-chat-surface="true"
+                  >
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {post.body}
                     </ReactMarkdown>
@@ -134,7 +162,7 @@ export function HomeAside({
           {!sources.length && <p className="text-sm text-muted-foreground">Ingest sources to get suggestions.</p>}
         </CardContent>
       </Card>
-      <p className="px-2 text-sm font-medium text-muted-foreground">2026 {account?.name || "Skywatch"} · Personal knowledge feed</p>
+      <p className="px-2 text-sm font-medium text-muted-foreground">2026 {account?.name || "Second Brain"} · Personal knowledge feed</p>
     </aside>
   );
 }

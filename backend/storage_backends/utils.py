@@ -5,6 +5,7 @@ import uuid
 from typing import Any
 
 from backend.embeddings import cosine_similarity
+from backend.services.concept_quality import is_quality_concept
 
 def slugify(value: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
@@ -53,7 +54,7 @@ def merge_graph(
     for concept_obj in concepts:
         label = str(concept_obj.get("label", ""))
         embedding = concept_obj.get("embedding")
-        if not label:
+        if not label or not is_quality_concept(label):
             continue
             
         best_match_id = None

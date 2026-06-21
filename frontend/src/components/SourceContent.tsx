@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 
 import { Textarea } from "@/components/ui/textarea";
+import { filterQualityConcepts } from "@/lib/concepts";
 import type { SourceDetail } from "@/types";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -40,9 +41,10 @@ export function SourceContent({
 }) {
   const originalFile = source.metadata?.original_file;
   const originalFileLink = originalFile?.drive_web_view_link || source.source_url;
+  const concepts = filterQualityConcepts(source.concepts ?? []);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-add-to-chat-surface="true">
       {originalFileLink && (
         <Section title="Original File">
           <a
@@ -87,9 +89,9 @@ export function SourceContent({
         </Section>
       )}
 
-      {!!source.concepts?.length && (
+      {!!concepts.length && (
         <Section title="Concepts">
-          <BulletList items={source.concepts} />
+          <BulletList items={concepts} />
         </Section>
       )}
 

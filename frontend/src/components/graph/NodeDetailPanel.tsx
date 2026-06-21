@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { isQualityConcept } from "@/lib/concepts";
 import type { SimNode } from "@/types";
 
 type NodeDetailPanelProps = {
@@ -9,6 +10,10 @@ type NodeDetailPanelProps = {
 };
 
 export function NodeDetailPanel({ node, neighborCount, connectedNodes, onSelect }: NodeDetailPanelProps) {
+  const visibleConnectedNodes = connectedNodes.filter((connectedNode) => (
+    connectedNode.type !== "concept" || isQualityConcept(connectedNode.label)
+  ));
+
   return (
     <div className="absolute right-4 top-4 w-72 rounded-xl border bg-white/95 p-4 shadow-xl backdrop-blur">
       <div className="flex items-start justify-between gap-3">
@@ -20,9 +25,9 @@ export function NodeDetailPanel({ node, neighborCount, connectedNodes, onSelect 
       </div>
       <div className="mt-4 space-y-2">
         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Connected nodes</div>
-        {connectedNodes.length ? (
+        {visibleConnectedNodes.length ? (
           <div className="max-h-44 space-y-1 overflow-auto pr-1">
-            {connectedNodes.map((n) => (
+            {visibleConnectedNodes.map((n) => (
               <button
                 className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted"
                 key={n.id}

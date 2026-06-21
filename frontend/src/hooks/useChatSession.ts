@@ -3,7 +3,7 @@ import { archiveChatSession, streamChatMessage } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import type { ChatHistoryMessage, ChatMessage, SourceDetail } from "@/types";
 
-const CHAT_HISTORY_STORAGE_KEY = "skywatch.chat.history.v1";
+const CHAT_HISTORY_STORAGE_KEY = "Second Brain.chat.history.v1";
 const MAX_CLIENT_HISTORY_MESSAGES = 20;
 
 function normalizeChatMessages(value: unknown): ChatMessage[] {

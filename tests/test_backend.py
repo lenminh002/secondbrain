@@ -395,6 +395,53 @@ def test_missing_pdf_does_not_persist_source(tmp_path: Path, monkeypatch) -> Non
     assert client.get("/posts").json() == []
 
 
+def test_concept_quality_filters_pronouns_common_words_and_duplicates() -> None:
+    from backend.services.concept_quality import filter_quality_concepts, is_quality_concept
+
+    assert not is_quality_concept("they")
+    assert not is_quality_concept("this")
+    assert not is_quality_concept("good")
+    assert not is_quality_concept("knowledge")
+    assert is_quality_concept("GraphRAG")
+    assert is_quality_concept("Ada Lovelace")
+    assert is_quality_concept("Knowledge Graph")
+
+    assert filter_quality_concepts(
+        [
+            "they",
+            "GraphRAG",
+            "this",
+            "Ada Lovelace",
+            "GraphRAG",
+            "knowledge",
+            "Retrieval Augmented Generation",
+        ],
+    ) == ["GraphRAG", "Ada Lovelace", "Retrieval Augmented Generation"]
+
+
+def test_graph_merge_skips_weak_concept_labels() -> None:
+    from backend.storage_backends.utils import merge_graph
+
+    graph = merge_graph(
+        {"nodes": [], "edges": []},
+        {"id": "source-a", "title": "Graph Note"},
+        [
+            {"label": "they", "embedding": [1.0]},
+            {"label": "good", "embedding": [0.9]},
+            {"label": "Knowledge Graph", "embedding": [0.8]},
+        ],
+    )
+
+    concept_labels = [node["label"] for node in graph["nodes"] if node["type"] == "concept"]
+    assert concept_labels == ["Knowledge Graph"]
+    assert graph["edges"] == [
+        {
+            "source": "source-source-a",
+            "target": "concept-knowledge-graph",
+            "relation": "mentions",
+        },
+    ]
+
 
 def test_parallel_note_ingestion_preserves_all_artifacts(tmp_path: Path, monkeypatch) -> None:
     from backend import storage
@@ -1227,4 +1274,3 @@ def test_link_ingestion_scrapes_and_processes(tmp_path: Path, monkeypatch) -> No
     assert "AI scaling" in detail["content"]
     assert detail["source_url"] == "https://drive.google.com/file/d/drive-md-file-1/view"
     assert detail["metadata"]["original_file"]["file_id"] == "drive-md-file-1"
-

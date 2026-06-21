@@ -11,15 +11,21 @@ export function useKnowledgeBase() {
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [selectedSourceDetail, setSelectedSourceDetail] = useState<SourceDetail | null>(null);
   const [notice, setNotice] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   async function refresh() {
-    const data = await fetchKnowledgeData();
-    setAccount(data.account);
-    setSources(data.sources);
-    setPosts(data.posts);
-    setGraph(data.graph);
-    if (!selectedSourceId && data.sources.length) {
-      setSelectedSourceId(data.sources[0].id);
+    setIsLoading(true);
+    try {
+      const data = await fetchKnowledgeData();
+      setAccount(data.account);
+      setSources(data.sources);
+      setPosts(data.posts);
+      setGraph(data.graph);
+      if (!selectedSourceId && data.sources.length) {
+        setSelectedSourceId(data.sources[0].id);
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -55,5 +61,6 @@ export function useKnowledgeBase() {
     setNotice,
     refresh,
     refreshWithNotice,
+    isLoading,
   };
 }

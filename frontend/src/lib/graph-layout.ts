@@ -13,9 +13,9 @@ export function computeInitialPositions(nodes: GraphNode[]): GraphNodePositions 
   const tagNodes = nodes.filter((n) => n.type === "tag");
   const conceptNodes = nodes.filter((n) => n.type === "concept");
 
-  const sourceRadius = Math.max(140, sourceNodes.length * 22);
-  const tagRadius = Math.max(230, tagNodes.length * 18);
-  const conceptRadius = Math.max(310, conceptNodes.length * 13);
+  const sourceRadius = Math.max(110, sourceNodes.length * 16);
+  const tagRadius = Math.max(170, tagNodes.length * 13);
+  const conceptRadius = Math.max(235, conceptNodes.length * 10);
 
   const positions: GraphNodePositions = {};
 
@@ -30,7 +30,7 @@ export function computeInitialPositions(nodes: GraphNode[]): GraphNodePositions 
   });
 
   conceptNodes.forEach((node, i) => {
-    const ring = conceptRadius + (i % 3) * 52;
+    const ring = conceptRadius + (i % 3) * 34;
     const angle = i * GOLDEN_ANGLE + Math.PI / 6;
     positions[node.id] = { x: CENTER_X + Math.cos(angle) * ring, y: CENTER_Y + Math.sin(angle) * ring };
   });

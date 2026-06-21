@@ -103,14 +103,14 @@ button:disabled,
 }
 
 .graph-canvas {
-  min-height: 420px;
+  min-height: 520px;
   width: 100%;
 }
 
 .graph-stage {
   color: hsl(214 32% 83%);
   cursor: grab;
-  min-height: 560px;
+  min-height: min(660px, calc(100vh - 230px));
   touch-action: none;
   user-select: none;
 }

@@ -1,1 +1,1 @@
-"""Backend package for the Skywatch API."""
+"""Backend package for the Second Brain API."""

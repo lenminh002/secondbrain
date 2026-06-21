@@ -108,7 +108,7 @@ export function NotesView({
       <section className="h-[calc(100vh-74px)] min-w-0 flex flex-col">
         <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
           {/* Desktop header to switch between Vault and AI Chat */}
-          <div className="hidden lg:flex h-14 items-center justify-between border-b px-6 bg-background">
+          <div className={cn("hidden h-14 items-center justify-between border-b bg-background px-6 lg:flex", notesMode === "graph" && "lg:hidden")}>
           <h1 className="font-bold">Memories</h1>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -132,8 +132,8 @@ export function NotesView({
         </div>
 
           {/* Mobile-only header to open the Vault in a drawer */}
-          <div className="flex items-center justify-between px-6 py-3 lg:hidden bg-background">
-          <div className="flex items-center gap-2 font-bold text-sm">
+          <div className="flex items-center justify-between px-6 py-3 lg:hidden">
+          <div className="flex items-center gap-2 font-bold text-lg">
             <BookOpen className="h-4 w-4 text-primary" />
             Memories
           </div>
@@ -173,7 +173,7 @@ export function NotesView({
                                     <span className="block truncate font-medium">{source.title}</span>
                                     <span className="text-xs text-muted-foreground">{formatDate(source.created_at)}</span>
                                   </span>
-                                  <StatusBadge status={source.status} />
+                                  {source.status !== "ready" && <StatusBadge status={source.status} />}
                                 </span>
                               </button>
                             </DrawerClose>
@@ -191,7 +191,7 @@ export function NotesView({
         </div>
 
 
-          <div className="mx-auto max-w-4xl p-5">
+          <div className={cn("mx-auto w-full p-5", notesMode === "graph" ? "max-w-7xl" : "max-w-4xl")}>
             {notice && <div className="mb-4 rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive break-words">{notice}</div>}
             {notesMode === "graph" ? (
               <div className="space-y-4">

@@ -18,11 +18,17 @@ export const sidebarItems: SidebarItem[] = [
   { label: "Librarian", icon: Bot, view: "chat" },
 ];
 
-export type MobileItem = { label: string; icon: LucideIcon; view: ActiveView };
+export type MobileItem = {
+  label: string;
+  icon: LucideIcon;
+  view: ActiveView;
+  mode?: NotesMode;
+};
 
 export const mobileItems: MobileItem[] = [
   { label: "Home", icon: Home, view: "home" },
-  { label: "Memories", icon: BookOpen, view: "notes" },
+  { label: "Memories", icon: BookOpen, view: "notes", mode: "note" },
   { label: "Ingest", icon: Upload, view: "ingest" },
+  { label: "Graph", icon: GitBranch, view: "notes", mode: "graph" },
   { label: "Librarian", icon: Bot, view: "chat" },
 ];
