@@ -117,9 +117,9 @@ export function NotesView({
               </Button>
               <ScrollArea className="h-full max-h-[320px] @2xl:max-h-none">
                 <div className="space-y-5 p-4">
-                  <div>
-                    <div className="mb-2 flex items-center gap-2 text-sm font-bold">
-                      <FileText className="h-4 w-4" />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-lg font-bold">
+                      <FileText className="h-6 w-6" />
                       Vault
                     </div>
                     <div className="space-y-4">
