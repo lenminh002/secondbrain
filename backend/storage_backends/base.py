@@ -63,3 +63,37 @@ class StorageBackend(ABC):
         concepts: list[str],
     ) -> None:
         raise NotImplementedError
+
+    # --- Agent runs -----------------------------------------------------
+
+    @abstractmethod
+    def create_agent_run(self, run: dict[str, Any]) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_agent_run(self, run_id: str, updates: dict[str, Any]) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def append_agent_tool_call(self, run_id: str, tool_call: dict[str, Any]) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_agent_run(self, run_id: str) -> dict[str, Any] | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def list_agent_runs_for_source(
+        self, account_id: str, source_id: str
+    ) -> list[dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_source_agent_status(
+        self,
+        account_id: str,
+        source_id: str,
+        agent_run_id: str,
+        agent_status: str,
+    ) -> None:
+        raise NotImplementedError

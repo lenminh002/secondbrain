@@ -124,3 +124,55 @@ class FirestoreStorageBackend(StorageBackend):
 
         graph = merge_graph(self.load_graph(account_id), source, concepts)
         self.save_graph(account_id, graph)
+
+    def create_agent_run(self, run: dict[str, Any]) -> None:
+        self._db.collection("agent_runs").document(str(run["run_id"])).set(dict(run))
+
+    def update_agent_run(self, run_id: str, updates: dict[str, Any]) -> None:
+        ref = self._db.collection("agent_runs").document(str(run_id))
+        existing = ref.get().to_dict() or {}
+        ref.set({**existing, **updates})
+
+    def append_agent_tool_call(self, run_id: str, tool_call: dict[str, Any]) -> None:
+        ref = self._db.collection("agent_runs").document(str(run_id))
+        existing = ref.get().to_dict() or {}
+        tool_calls = existing.get("tool_calls") if isinstance(existing.get("tool_calls"), list) else []
+        tool_calls = [*tool_calls, dict(tool_call)]
+        ref.set({**existing, "tool_calls": tool_calls})
+
+    def get_agent_run(self, run_id: str) -> dict[str, Any] | None:
+        snapshot = self._db.collection("agent_runs").document(str(run_id)).get()
+        if not snapshot.exists:
+            return None
+        return deepcopy(snapshot.to_dict() or {})
+
+    def list_agent_runs_for_source(
+        self, account_id: str, source_id: str
+    ) -> list[dict[str, Any]]:
+        query = (
+            self._db.collection("agent_runs")
+            .where("account_id", "==", account_id)
+            .where("source_id", "==", source_id)
+        )
+        return coerce_list([snapshot.to_dict() or {} for snapshot in query.stream()])
+
+    def update_source_agent_status(
+        self,
+        account_id: str,
+        source_id: str,
+        agent_run_id: str,
+        agent_status: str,
+    ) -> None:
+        ref = self._db.collection("sources").document(str(source_id))
+        existing = ref.get().to_dict() or {}
+        if existing.get("account_id") not in (None, account_id):
+            return
+        ref.set(
+            {
+                **existing,
+                "account_id": account_id,
+                "processing_mode": "agent",
+                "agent_run_id": agent_run_id,
+                "agent_status": agent_status,
+            }
+        )

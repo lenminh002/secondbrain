@@ -19,6 +19,22 @@ def extract_pdf_text(file_bytes: bytes) -> str:
     return text
 
 
+def extract_pdf_pages(file_bytes: bytes) -> list[dict[str, Any]]:
+    """Extract per-page text using pypdf. Returns [{"page": 1, "text": "..."}, ...]."""
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:
+        raise RuntimeError("PDF support requires the pypdf package. Run `uv sync`.") from exc
+
+    reader = PdfReader(BytesIO(file_bytes))
+    pages: list[dict[str, Any]] = []
+    for index, page in enumerate(reader.pages):
+        pages.append({"page": index + 1, "text": (page.extract_text() or "").strip()})
+    if not pages:
+        raise ValueError("No pages were found in this PDF.")
+    return pages
+
+
 def extract_youtube_id(url: str) -> str:
     parsed = urlparse(url)
     if parsed.netloc in {"youtu.be", "www.youtu.be"}:

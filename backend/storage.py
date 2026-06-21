@@ -93,3 +93,32 @@ def commit_source_artifacts(
     concepts: list[str],
 ) -> None:
     _backend().commit_source_artifacts(account_id, source, chunks, post, concepts)
+
+
+def create_agent_run(run: dict[str, Any]) -> None:
+    _backend().create_agent_run(run)
+
+
+def update_agent_run(run_id: str, updates: dict[str, Any]) -> None:
+    _backend().update_agent_run(run_id, updates)
+
+
+def append_agent_tool_call(run_id: str, tool_call: dict[str, Any]) -> None:
+    _backend().append_agent_tool_call(run_id, tool_call)
+
+
+def get_agent_run(run_id: str) -> dict[str, Any] | None:
+    return _backend().get_agent_run(run_id)
+
+
+def list_agent_runs_for_source(account_id: str, source_id: str) -> list[dict[str, Any]]:
+    return _backend().list_agent_runs_for_source(account_id, source_id)
+
+
+def update_source_agent_status(
+    account_id: str,
+    source_id: str,
+    agent_run_id: str,
+    agent_status: str,
+) -> None:
+    _backend().update_source_agent_status(account_id, source_id, agent_run_id, agent_status)

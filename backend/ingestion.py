@@ -4,13 +4,16 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Literal
 
+from config import get_settings
 from embeddings import current_embedding_model, embed_texts
 from extractors import extract_pdf_text
 from google_drive import upload_pdf_to_drive
+from knowledge_ai import _client as _anthropic_client
 from knowledge_ai import enrich_content
 from storage import (
     append_source,
     commit_source_artifacts,
+    load_sources,
     save_source_result,
 )
 
@@ -185,6 +188,42 @@ def create_processing_source(
     return source
 
 
+def _agent_pdf_enabled() -> bool:
+    settings = get_settings()
+    return (
+        settings.agent_enabled
+        and settings.agent_processing_mode == "agent"
+        and _anthropic_client() is not None
+    )
+
+
+def _reload_source(account_id: str, source_id: str, fallback: dict[str, Any]) -> dict[str, Any]:
+    for source in load_sources(account_id):
+        if str(source.get("id")) == str(source_id):
+            return source
+    return fallback
+
+
+def _process_pdf_with_agent(
+    source: dict[str, Any],
+    pdf_bytes: bytes,
+) -> dict[str, Any]:
+    # Import here to avoid importing the Anthropic-dependent agent module unless
+    # the agentic path is actually taken.
+    from agent import KnowledgeLibrarianAgent
+
+    account_id = str(source["account_id"])
+    source["processing_mode"] = "agent"
+    save_source_result(account_id, source)
+    KnowledgeLibrarianAgent().process_pdf_with_agent(
+        account_id=account_id,
+        source_id=str(source["id"]),
+        file_bytes=pdf_bytes,
+        title=str(source["title"]),
+    )
+    return _reload_source(account_id, str(source["id"]), source)
+
+
 def process_source(
     source: dict[str, Any],
     text: str | None = None,
@@ -205,10 +244,15 @@ def process_source(
                 source,
                 upload_pdf_to_drive(pdf_bytes, filename),
             )
-            _set_progress(source, "extracting")
-            content = extract_pdf_text(pdf_bytes)
             if filename and source["title"] in {"Untitled source", filename}:
                 source["title"] = filename.rsplit(".", 1)[0]
+
+            # Agentic path: Claude drives the rest of PDF processing via tools.
+            if _agent_pdf_enabled():
+                return _process_pdf_with_agent(source, pdf_bytes)
+
+            _set_progress(source, "extracting")
+            content = extract_pdf_text(pdf_bytes)
 
         _set_progress(source, "enriching")
         enrichment = enrich_content(source_type, source["title"], source.get("source_url") or source_url, content)

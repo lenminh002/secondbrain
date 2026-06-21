@@ -28,6 +28,7 @@ class MemoryStorageBackend(StorageBackend):
         self.posts: dict[str, dict[str, Any]] = {}
         self.graphs: dict[str, dict[str, list[dict[str, Any]]]] = {}
         self.accounts: dict[str, dict[str, str]] = {}
+        self.agent_runs: dict[str, dict[str, Any]] = {}
         if os.getenv("SECONDBRAIN_SEED_MOCK_DATA", "1") != "0":
             self._seed_mock_data()
 
@@ -267,3 +268,48 @@ class MemoryStorageBackend(StorageBackend):
                 source,
                 concepts,
             )
+
+    def create_agent_run(self, run: dict[str, Any]) -> None:
+        with self._lock:
+            self.agent_runs[str(run["run_id"])] = deepcopy(run)
+
+    def update_agent_run(self, run_id: str, updates: dict[str, Any]) -> None:
+        with self._lock:
+            run = self.agent_runs.get(str(run_id))
+            if run is not None:
+                run.update(deepcopy(updates))
+
+    def append_agent_tool_call(self, run_id: str, tool_call: dict[str, Any]) -> None:
+        with self._lock:
+            run = self.agent_runs.get(str(run_id))
+            if run is not None:
+                run.setdefault("tool_calls", []).append(deepcopy(tool_call))
+
+    def get_agent_run(self, run_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            run = self.agent_runs.get(str(run_id))
+            return deepcopy(run) if run else None
+
+    def list_agent_runs_for_source(
+        self, account_id: str, source_id: str
+    ) -> list[dict[str, Any]]:
+        with self._lock:
+            return [
+                deepcopy(run)
+                for run in self.agent_runs.values()
+                if run.get("account_id") == account_id and run.get("source_id") == source_id
+            ]
+
+    def update_source_agent_status(
+        self,
+        account_id: str,
+        source_id: str,
+        agent_run_id: str,
+        agent_status: str,
+    ) -> None:
+        with self._lock:
+            source = self.sources.get(str(source_id))
+            if source is not None and source.get("account_id") == account_id:
+                source["processing_mode"] = "agent"
+                source["agent_run_id"] = agent_run_id
+                source["agent_status"] = agent_status

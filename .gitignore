@@ -10,3 +10,14 @@ frontend/dist/
 frontend/.env.local
 
 firebase-service-account.json
+google-drive-service-account.json
+*service-account*.json
+*-service-account.json
+# Google Cloud service-account key downloaded with its default name.
+refined-clarity-*.json
+refined-clarity-353209-8950cf458ebe.json
+.rocketride/
+
+# Local editor / agent tooling
+.claude/
+.cursor/

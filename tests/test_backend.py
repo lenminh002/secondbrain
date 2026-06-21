@@ -848,3 +848,179 @@ def test_note_ingestion_persists_artifacts_to_firestore(monkeypatch) -> None:
     graph = fake_db.records["graphs"][TEST_ACCOUNT_ID]
     assert graph["account_id"] == TEST_ACCOUNT_ID
     assert {"source": f"source-{source['id']}", "target": "concept-firestore", "relation": "mentions"} in graph["edges"]
+
+
+# --- Knowledge Librarian Agent -------------------------------------------------
+
+
+class _FakeBlock:
+    def __init__(self, data: dict) -> None:
+        self._data = data
+
+    def __getattr__(self, name: str):
+        try:
+            return self._data[name]
+        except KeyError as exc:
+            raise AttributeError(name) from exc
+
+    def model_dump(self, **_: object) -> dict:
+        return dict(self._data)
+
+
+class _FakeResponse:
+    def __init__(self, content: list[_FakeBlock]) -> None:
+        self.content = content
+
+
+class _FakeMessages:
+    def __init__(self, script: list[list[_FakeBlock]]) -> None:
+        self._script = list(script)
+        self._index = 0
+
+    def create(self, **_: object) -> _FakeResponse:
+        content = self._script[self._index]
+        self._index += 1
+        return _FakeResponse(content)
+
+
+class _FakeAnthropic:
+    def __init__(self, script: list[list[_FakeBlock]]) -> None:
+        self.messages = _FakeMessages(script)
+
+
+def _tool_use(name: str, source_id: str = "src-agent") -> list[_FakeBlock]:
+    return [
+        _FakeBlock(
+            {
+                "type": "tool_use",
+                "id": f"tu_{name}",
+                "name": name,
+                "input": {"source_id": source_id},
+            }
+        )
+    ]
+
+
+def test_knowledge_agent_processes_pdf_end_to_end(monkeypatch) -> None:
+    import agent_tools
+    import storage
+    from agent import KnowledgeLibrarianAgent
+
+    monkeypatch.setenv("SECONDBRAIN_STORAGE_BACKEND", "memory")
+    monkeypatch.setenv("SECONDBRAIN_SEED_MOCK_DATA", "0")
+    storage.reset_backend_for_tests()
+
+    monkeypatch.setattr(
+        agent_tools,
+        "extract_pdf_pages",
+        lambda _bytes: [
+            {"page": 1, "text": "Graphs connect related concepts. Retrieval finds relevant chunks for answers."},
+            {"page": 2, "text": "Embeddings encode meaning into vectors so similarity search can rank context."},
+        ],
+    )
+
+    storage.append_source(
+        TEST_ACCOUNT_ID,
+        {
+            "id": "src-agent",
+            "account_id": TEST_ACCOUNT_ID,
+            "type": "pdf",
+            "title": "Agent Paper",
+            "status": "processing",
+        },
+    )
+
+    script = [
+        _tool_use("inspect_source"),
+        _tool_use("extract_pdf_pages"),
+        _tool_use("clean_extracted_pages"),
+        _tool_use("chunk_clean_pages"),
+        _tool_use("embed_and_save_chunks"),
+        _tool_use("generate_and_save_memory_posts"),
+        _tool_use("build_and_save_graph"),
+        _tool_use("finalize_source"),
+        [_FakeBlock({"type": "text", "text": '{"status": "completed", "summary": "all done"}'})],
+    ]
+    agent = KnowledgeLibrarianAgent(anthropic_client=_FakeAnthropic(script))
+
+    result = agent.process_pdf_with_agent(
+        account_id=TEST_ACCOUNT_ID,
+        source_id="src-agent",
+        file_bytes=b"%PDF-1.4 fake",
+        title="Agent Paper",
+    )
+
+    assert result["status"] == "completed"
+    assert result["summary"] == "all done"
+
+    sources = {source["id"]: source for source in storage.load_sources(TEST_ACCOUNT_ID)}
+    assert sources["src-agent"]["status"] == "ready"
+    assert sources["src-agent"]["agent_status"] == "completed"
+    assert sources["src-agent"]["processing_mode"] == "agent"
+    assert sources["src-agent"]["total_chunks"] >= 1
+
+    chunks = storage.load_chunks(TEST_ACCOUNT_ID)
+    assert chunks and all(chunk["source_id"] == "src-agent" for chunk in chunks)
+    assert storage.load_posts(TEST_ACCOUNT_ID)
+    assert storage.load_graph(TEST_ACCOUNT_ID)["nodes"]
+
+    run = storage.get_agent_run(result["run_id"])
+    assert run["status"] == "completed"
+    tool_names = [call["tool_name"] for call in run["tool_calls"]]
+    assert tool_names[:3] == ["inspect_source", "extract_pdf_pages", "clean_extracted_pages"]
+    assert "finalize_source" in tool_names
+    # The trace must never carry raw page/chunk payloads.
+    assert all("file_bytes" not in call["input_summary"] for call in run["tool_calls"])
+
+
+def test_knowledge_agent_validates_tool_order(monkeypatch) -> None:
+    import storage
+    from agent_tools import KnowledgeAgentTools
+
+    monkeypatch.setenv("SECONDBRAIN_STORAGE_BACKEND", "memory")
+    monkeypatch.setenv("SECONDBRAIN_SEED_MOCK_DATA", "0")
+    storage.reset_backend_for_tests()
+
+    tools = KnowledgeAgentTools(TEST_ACCOUNT_ID, "src-x", "Title", {})
+
+    # Cleaning before extracting must error, not crash.
+    assert tools.clean_extracted_pages()["error"]
+    assert tools.chunk_clean_pages()["error"]
+    assert tools.embed_and_save_chunks()["error"]
+    assert tools.finalize_source()["error"]
+
+
+def test_agent_run_failure_marks_source_failed(monkeypatch) -> None:
+    import agent_tools
+    import storage
+    from agent import KnowledgeLibrarianAgent
+
+    monkeypatch.setenv("SECONDBRAIN_STORAGE_BACKEND", "memory")
+    monkeypatch.setenv("SECONDBRAIN_SEED_MOCK_DATA", "0")
+    storage.reset_backend_for_tests()
+
+    def boom(_bytes):
+        raise RuntimeError("no readable text")
+
+    monkeypatch.setattr(agent_tools, "extract_pdf_pages", boom)
+    storage.append_source(
+        TEST_ACCOUNT_ID,
+        {"id": "src-bad", "account_id": TEST_ACCOUNT_ID, "type": "pdf", "title": "Bad", "status": "processing"},
+    )
+
+    # Claude tries to extract, the tool errors; then Claude gives up with text.
+    script = [
+        _tool_use("extract_pdf_pages", "src-bad"),
+        [_FakeBlock({"type": "text", "text": '{"status": "failed", "summary": "no text"}'})],
+    ]
+    agent = KnowledgeLibrarianAgent(anthropic_client=_FakeAnthropic(script))
+    result = agent.process_pdf_with_agent(
+        account_id=TEST_ACCOUNT_ID,
+        source_id="src-bad",
+        file_bytes=b"%PDF-1.4 fake",
+        title="Bad",
+    )
+
+    assert result["status"] == "failed"
+    sources = {source["id"]: source for source in storage.load_sources(TEST_ACCOUNT_ID)}
+    assert sources["src-bad"]["status"] == "failed"

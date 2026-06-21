@@ -15,10 +15,24 @@ load_dotenv()
 from contextlib import asynccontextmanager
 
 from embeddings import cosine_similarity, embed_text
-from ingestion import VideoIngestionDeferred, create_processing_source, process_source
+from ingestion import (
+    VideoIngestionDeferred,
+    _agent_pdf_enabled,
+    create_processing_source,
+    process_source,
+)
 from knowledge_ai import answer_with_context, answer_with_tools
 from storage import get_account as storage_get_account
-from storage import load_chunks, load_graph, load_posts, load_sources, upsert_account, save_source_result
+from storage import (
+    get_agent_run,
+    list_agent_runs_for_source,
+    load_chunks,
+    load_graph,
+    load_posts,
+    load_sources,
+    save_source_result,
+    upsert_account,
+)
 
 
 def cleanup_stuck_processing_sources() -> None:
@@ -391,6 +405,9 @@ async def create_source(
             file_bytes=file_bytes,
             filename=filename,
         )
+        source["processing_mode"] = (
+            "agent" if source_type == "pdf" and _agent_pdf_enabled() else "deterministic"
+        )
         return source
     except VideoIngestionDeferred as exc:
         raise HTTPException(status_code=501, detail=str(exc)) from exc
@@ -428,6 +445,37 @@ async def chat(
         raise HTTPException(status_code=400, detail="Message is required.")
 
     return await anyio.to_thread.run_sync(_chat_response, account["id"], message)
+
+
+@app.get("/agent/runs/{run_id}")
+def get_agent_run_status(run_id: str) -> dict[str, Any]:
+    run = get_agent_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Agent run not found.")
+    return run
+
+
+@app.get("/sources/{source_id}/agent-runs")
+def get_source_agent_runs(source_id: str) -> list[dict[str, Any]]:
+    account = current_account()
+    return _sort_newest(list_agent_runs_for_source(account["id"], source_id))
+
+
+@app.post("/sources/{source_id}/agent-retry")
+def retry_source_with_agent(source_id: str) -> dict[str, Any]:
+    account = current_account()
+    source = next(
+        (item for item in load_sources(account["id"]) if str(item.get("id")) == str(source_id)),
+        None,
+    )
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source not found.")
+    # Re-running the agent needs the original PDF bytes. Drive download is not
+    # implemented, so we surface a clear, actionable error instead of guessing.
+    raise HTTPException(
+        status_code=501,
+        detail="Retry requires Drive download support or re-upload.",
+    )
 
 
 if __name__ == "__main__":

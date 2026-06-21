@@ -141,6 +141,72 @@ Content:
     }
 
 
+MEMORY_POST_TYPES = ["summary", "quiz", "fill_blank", "explain_simple", "reflection"]
+
+
+def _fallback_memory_posts(text: str) -> list[dict[str, str]]:
+    snippet = " ".join(text.split())[:280]
+    if not snippet:
+        return []
+    return [{"type": "summary", "body": snippet}]
+
+
+def generate_memory_posts(
+    source_title: str,
+    chunks: list[dict[str, Any]],
+    *,
+    max_chunks: int = 12,
+) -> list[dict[str, str]]:
+    """Turn source chunks into learning posts (summary/quiz/fill_blank/...).
+
+    Returns a flat list of {"type", "body"} dicts. One Claude call per chunk so a
+    single failing chunk can be skipped without losing the rest. Capped at
+    ``max_chunks`` to keep hackathon runs fast and cheap.
+    """
+    client = _client()
+    posts: list[dict[str, str]] = []
+    for chunk in chunks[:max_chunks]:
+        text = str(chunk.get("text", "")).strip()
+        if not text:
+            continue
+        if client is None:
+            posts.extend(_fallback_memory_posts(text))
+            continue
+        prompt = f"""
+You are creating spaced-repetition study posts from one passage of "{source_title}".
+
+Return ONLY a JSON array. Each item:
+{{"type": one of {MEMORY_POST_TYPES}, "body": "the post text"}}
+
+Create 2-3 varied posts grounded strictly in the passage. Use a fill_blank as
+"sentence with ____" and a quiz as a question (optionally with the answer).
+
+Passage:
+{text[:4000]}
+""".strip()
+        try:
+            message = client.messages.create(
+                model=MODEL_NAME,
+                max_tokens=900,
+                temperature=0.3,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            parsed = json.loads(_strip_code_fence(_text_from_content(message.content)))
+            if not isinstance(parsed, list):
+                raise ValueError("memory posts response was not a JSON array")
+        except Exception:
+            # Skip this chunk and continue with the rest.
+            continue
+        for item in parsed:
+            if not isinstance(item, dict):
+                continue
+            post_type = str(item.get("type", "")).strip().lower()
+            body = str(item.get("body", "")).strip()
+            if body and post_type in MEMORY_POST_TYPES:
+                posts.append({"type": post_type, "body": body})
+    return posts
+
+
 def answer_with_context(
     message: str,
     chunks: list[dict[str, Any]],
