@@ -1,6 +1,6 @@
 export type SourceType = "note" | "pdf" | "youtube";
 export type SourceStatus = "processing" | "ready" | "failed";
-export type ActiveView = "home" | "notes" | "ingest";
+export type ActiveView = "home" | "notes" | "ingest" | "chat";
 export type NotesMode = "note" | "graph";
 
 export type AccountRecord = {
@@ -149,6 +149,7 @@ export type ChatMessage = {
   citations?: Citation[];
   graphContext?: GraphContext[];
   toolCalls?: ToolCall[];
+  isStreaming?: boolean;
 };
 
 export type ApiError = {

@@ -65,3 +65,67 @@ export async function sendChatMessage(message: string) {
   if (!response.ok) throw new Error(payload.detail || "Chat failed.");
   return payload;
 }
+
+export interface StreamChatCallbacks {
+  onText: (chunk: string) => void;
+  onToolCall: (name: string) => void;
+  onDone: (citations: Citation[], graphContext: GraphContext[], toolCalls: ToolCall[]) => void;
+  onError?: (message: string) => void;
+}
+
+export async function streamChatMessage(
+  message: string,
+  callbacks: StreamChatCallbacks,
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/chat/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  if (!response.ok || !response.body) {
+    const payload = (await response.json().catch(() => ({}))) as ApiError;
+    throw new Error(payload.detail || "Streaming chat failed.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const raw = line.slice(6).trim();
+      if (!raw) continue;
+      let event: Record<string, unknown>;
+      try {
+        event = JSON.parse(raw) as Record<string, unknown>;
+      } catch {
+        continue;
+      }
+
+      const type = event["type"] as string;
+      if (type === "text") {
+        callbacks.onText(event["text"] as string);
+      } else if (type === "tool_call") {
+        callbacks.onToolCall(event["name"] as string);
+      } else if (type === "done") {
+        callbacks.onDone(
+          (event["citations"] as Citation[]) ?? [],
+          (event["graph_context"] as GraphContext[]) ?? [],
+          (event["tool_calls"] as ToolCall[]) ?? [],
+        );
+        return;
+      } else if (type === "error") {
+        callbacks.onError?.(event["message"] as string);
+        return;
+      }
+    }
+  }
+}

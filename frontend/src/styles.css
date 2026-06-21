@@ -92,6 +92,12 @@ button:disabled,
   transition: grid-template-columns 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.chat-grid {
+  display: grid;
+  grid-template-columns: var(--sidebar-width, 260px) minmax(0, 1fr);
+  transition: grid-template-columns 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .mobile-bottom-nav {
   box-shadow: 0 -16px 40px hsl(222 47% 11% / 0.08);
 }
@@ -193,7 +199,8 @@ button:disabled,
 @media (max-width: 1023px) {
   .social-grid,
   .notes-grid,
-  .ingest-grid {
+  .ingest-grid,
+  .chat-grid {
     display: block;
   }
 }

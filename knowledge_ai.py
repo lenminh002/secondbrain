@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from typing import Any
 
 from anthropic import Anthropic
@@ -285,3 +285,83 @@ If the saved context is insufficient, say what is missing.
         ],
     )
     return _text_from_content(final_response.content), used_tools
+
+
+
+def stream_with_tools(
+    message: str,
+    execute_tool: Callable[[str, dict[str, Any]], dict[str, Any]],
+) -> Generator[dict[str, Any], None, None]:
+    """Stream the AI response token-by-token via a generator of SSE-compatible dicts.
+
+    Yields:
+        {"type": "tool_call", "name": "<tool_name>"}  – when a tool fires
+        {"type": "text",      "text": "<chunk>"}       – streamed text tokens
+        {"type": "done"}                               – end-of-stream sentinel
+    """
+    client = _client()
+    if client is None:
+        raise ValueError("ANTHROPIC_API_KEY is required for streaming.")
+
+    messages: list[dict[str, Any]] = [{"role": "user", "content": message}]
+    system = """
+You are a personal knowledge assistant. For simple greetings or conversational messages
+(e.g. "hello", "thanks", "how are you"), respond naturally without searching.
+For questions about specific topics, notes, or information, use the search_knowledge_base
+tool to find relevant saved content and cite sources inline like [1].
+If the saved context is insufficient, say what is missing.
+""".strip()
+
+    for _turn in range(MAX_AGENT_TURNS):
+        with client.messages.stream(
+            model=MODEL_NAME,
+            max_tokens=1200,
+            temperature=0.1,
+            system=system,
+            tools=CHAT_TOOLS,
+            tool_choice={"type": "auto"},
+            messages=messages,
+        ) as stream:
+            for text_chunk in stream.text_stream:
+                yield {"type": "text", "text": text_chunk}
+            final_msg = stream.get_final_message()
+
+        messages.append(
+            {"role": "assistant", "content": _message_content_to_params(final_msg.content)}
+        )
+
+        tool_uses = [
+            block for block in final_msg.content if getattr(block, "type", None) == "tool_use"
+        ]
+        if not tool_uses:
+            # Text was already streamed above; we're done.
+            break
+
+        # Execute each tool and feed results back.
+        tool_results: list[dict[str, Any]] = []
+        for tool_use in tool_uses:
+            tool_name = str(getattr(tool_use, "name", ""))
+            tool_input = getattr(tool_use, "input", {}) or {}
+            yield {"type": "tool_call", "name": tool_name}
+            try:
+                result = execute_tool(tool_name, dict(tool_input))
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_use.id,
+                        "content": json.dumps(result),
+                    }
+                )
+            except Exception as exc:
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_use.id,
+                        "is_error": True,
+                        "content": str(exc),
+                    }
+                )
+        messages.append({"role": "user", "content": tool_results})
+
+    yield {"type": "done"}
+

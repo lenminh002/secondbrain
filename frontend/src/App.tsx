@@ -8,7 +8,7 @@ import { HomeAside, HomeView } from "@/components/HomeView";
 import { NotesView } from "@/components/NotesView";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { createSource, fetchKnowledgeData, fetchSourceDetail, sendChatMessage } from "@/lib/api";
+import { createSource, fetchKnowledgeData, fetchSourceDetail, streamChatMessage } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import type { AccountRecord, ActiveView, ChatMessage, KnowledgeGraph, NotesMode, PostRecord, SourceDetail, SourceRecord, SourceType } from "@/types";
 
@@ -122,24 +122,78 @@ export default function App() {
   async function submitChat(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = chatInput.trim();
-    if (!message) return;
+    if (!message || isChatting) return;
     setChatInput("");
     setIsChatting(true);
-    setChatLog((current) => [...current, { role: "user", text: message }]);
+
+    // Add user message + placeholder assistant message immediately.
+    setChatLog((current) => [
+      ...current,
+      { role: "user", text: message },
+      { role: "assistant", text: "", isStreaming: true },
+    ]);
+
     try {
-      const payload = await sendChatMessage(message);
-      setChatLog((current) => [
-        ...current,
-        {
-          role: "assistant",
-          text: payload.answer,
-          citations: payload.citations || [],
-          graphContext: payload.graph_context || [],
-          toolCalls: payload.tool_calls || [],
+      await streamChatMessage(message, {
+        onText(chunk) {
+          setChatLog((current) => {
+            const updated = [...current];
+            const last = updated[updated.length - 1];
+            if (last?.role === "assistant") {
+              updated[updated.length - 1] = { ...last, text: last.text + chunk };
+            }
+            return updated;
+          });
         },
-      ]);
+        onToolCall(name) {
+          setChatLog((current) => {
+            const updated = [...current];
+            const last = updated[updated.length - 1];
+            if (last?.role === "assistant") {
+              updated[updated.length - 1] = {
+                ...last,
+                toolCalls: [...(last.toolCalls ?? []), { name }],
+              };
+            }
+            return updated;
+          });
+        },
+        onDone(citations, graphContext, toolCalls) {
+          setChatLog((current) => {
+            const updated = [...current];
+            const last = updated[updated.length - 1];
+            if (last?.role === "assistant") {
+              updated[updated.length - 1] = {
+                ...last,
+                isStreaming: false,
+                citations,
+                graphContext,
+                toolCalls,
+              };
+            }
+            return updated;
+          });
+        },
+        onError(msg) {
+          setChatLog((current) => {
+            const updated = [...current];
+            const last = updated[updated.length - 1];
+            if (last?.role === "assistant") {
+              updated[updated.length - 1] = { ...last, text: msg, isStreaming: false };
+            }
+            return updated;
+          });
+        },
+      });
     } catch (error: unknown) {
-      setChatLog((current) => [...current, { role: "assistant", text: errorMessage(error) }]);
+      setChatLog((current) => {
+        const updated = [...current];
+        const last = updated[updated.length - 1];
+        if (last?.role === "assistant") {
+          updated[updated.length - 1] = { ...last, text: errorMessage(error), isStreaming: false };
+        }
+        return updated;
+      });
     } finally {
       setIsChatting(false);
     }
@@ -168,7 +222,7 @@ export default function App() {
       <div className="app-frame pb-20 lg:pb-0">
         <TopBar account={account} />
         <div
-          className={activeView === "home" ? "social-grid" : activeView === "ingest" ? "ingest-grid" : "notes-grid"}
+          className={activeView === "home" ? "social-grid" : activeView === "ingest" ? "ingest-grid" : activeView === "chat" ? "chat-grid" : "notes-grid"}
           style={{
             ["--sidebar-width" as string]: isSidebarMinimized ? "72px" : "260px",
             ["--chat-width" as string]: isChatMinimized ? "48px" : "360px"
@@ -195,6 +249,10 @@ export default function App() {
               title={title}
               youtubeUrl={youtubeUrl}
             />
+          ) : activeView === "chat" ? (
+            <div className="h-[calc(100vh-74px)]">
+              <ChatPanel chatInput={chatInput} chatLog={chatLog} isChatting={isChatting} setChatInput={setChatInput} submitChat={submitChat} />
+            </div>
           ) : (
             <NotesView
               chatPanel={chatPanel}

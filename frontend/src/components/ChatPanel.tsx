@@ -97,6 +97,9 @@ export function ChatPanel({
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {message.text}
                       </ReactMarkdown>
+                      {message.isStreaming && (
+                        <span className="inline-block w-[3px] h-[1em] bg-current align-middle ml-0.5 animate-pulse" />
+                      )}
                     </div>
                   ) : (
                     <p>{message.text}</p>

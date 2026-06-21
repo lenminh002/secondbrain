@@ -1,4 +1,4 @@
-import { Bell, BookOpen, CircleUserRound, Compass, GitBranch, Home, Settings, Upload } from "lucide-react";
+import { Bell, BookOpen, Bot, CircleUserRound, GitBranch, Home, Settings, Upload } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import type { ActiveView, NotesMode } from "@/types";
@@ -15,7 +15,7 @@ export const sidebarItems: SidebarItem[] = [
   { label: "Home", icon: Home, view: "home" },
   { label: "Memories", icon: BookOpen, view: "notes", mode: "note" },
   { label: "Graph", icon: GitBranch, view: "notes", mode: "graph" },
-  { label: "Explore", icon: Compass, disabled: true },
+  { label: "Librarian", icon: Bot, view: "chat" },
   { label: "Notifications", icon: Bell, disabled: true },
   { label: "Settings", icon: Settings, disabled: true },
 ];
@@ -26,4 +26,5 @@ export const mobileItems: MobileItem[] = [
   { label: "Home", icon: Home, view: "home" },
   { label: "Memories", icon: BookOpen, view: "notes" },
   { label: "Ingest", icon: Upload, view: "ingest" },
+  { label: "Librarian", icon: Bot, view: "chat" },
 ];
