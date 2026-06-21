@@ -94,72 +94,79 @@ export function NotesView({
   return (
     <main className="min-h-[calc(100vh-74px)] min-w-0 border-r @container">
       <div
-        className="grid h-[calc(100vh-74px)] grid-cols-1 @2xl:grid-cols-[var(--vault-width,280px)_minmax(0,1fr)] transition-[grid-template-columns] duration-300"
+        className={cn(
+          "grid h-[calc(100vh-74px)] transition-[grid-template-columns] duration-300",
+          notesMode === "graph"
+            ? "grid-cols-1"
+            : "grid-cols-1 @2xl:grid-cols-[var(--vault-width,280px)_minmax(0,1fr)]"
+        )}
         style={{ "--vault-width": isVaultMinimized ? "48px" : "280px" } as React.CSSProperties}
       >
-        <aside className="min-h-0 border-b bg-muted/20 @2xl:border-b-0 @2xl:border-r relative transition-all duration-300">
-          {isVaultMinimized ? (
-            <div className="flex flex-col items-center py-4 h-full">
-              <Button variant="ghost" size="icon" onClick={() => setIsVaultMinimized(false)}>
-                <ChevronRight className="h-5 w-5" />
-              </Button>
-              <FileText className="h-5 w-5 mt-4 text-muted-foreground" />
-            </div>
-          ) : (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 z-10 h-8 w-8 hidden @2xl:flex"
-                onClick={() => setIsVaultMinimized(true)}
-              >
-                <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-              </Button>
-              <ScrollArea className="h-full max-h-[320px] @2xl:max-h-none">
-                <div className="space-y-5 p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-lg font-bold">
-                      <FileText className="h-6 w-6" />
-                      Vault
-                    </div>
-                    <div className="space-y-4">
-                      {(["note", "pdf"] as const).map((type) => (
-                        <div key={type}>
-                          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{type}</div>
-                          <div className="space-y-1">
-                            {sourcesByType[type].length ? (
-                              sourcesByType[type].map((source) => (
-                                <button
-                                  className={cn(
-                                    "w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-muted",
-                                    selectedSourceId === source.id && "bg-muted",
-                                  )}
-                                  key={source.id}
-                                  onClick={() => { setSelectedSourceId(source.id); setNotesMode("note"); }}
-                                  type="button"
-                                >
-                                  <span className="flex w-full items-start justify-between gap-2 min-w-0">
-                                    <span className="min-w-0">
-                                      <span className="block truncate font-medium">{source.title}</span>
-                                      <span className="text-xs text-muted-foreground">{formatDate(source.created_at)}</span>
+        {notesMode !== "graph" && (
+          <aside className="min-h-0 border-b bg-muted/20 @2xl:border-b-0 @2xl:border-r relative transition-all duration-300">
+            {isVaultMinimized ? (
+              <div className="flex flex-col items-center py-4 h-full">
+                <Button variant="ghost" size="icon" onClick={() => setIsVaultMinimized(false)}>
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+                <FileText className="h-5 w-5 mt-4 text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 z-10 h-8 w-8 hidden @2xl:flex"
+                  onClick={() => setIsVaultMinimized(true)}
+                >
+                  <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+                </Button>
+                <ScrollArea className="h-full max-h-[320px] @2xl:max-h-none">
+                  <div className="space-y-5 p-4">
+                    <div>
+                      <div className="flex items-center gap-2 text-lg font-bold">
+                        <FileText className="h-6 w-6" />
+                        Vault
+                      </div>
+                      <div className="space-y-4 mt-6">
+                        {(["note", "pdf"] as const).map((type) => (
+                          <div key={type}>
+                            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{type}</div>
+                            <div className="space-y-1">
+                              {sourcesByType[type].length ? (
+                                sourcesByType[type].map((source) => (
+                                  <button
+                                    className={cn(
+                                      "w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-muted",
+                                      selectedSourceId === source.id && "bg-muted",
+                                    )}
+                                    key={source.id}
+                                    onClick={() => { setSelectedSourceId(source.id); setNotesMode("note"); }}
+                                    type="button"
+                                  >
+                                    <span className="flex w-full items-start justify-between gap-2 min-w-0">
+                                      <span className="min-w-0">
+                                        <span className="block truncate font-medium">{source.title}</span>
+                                        <span className="text-xs text-muted-foreground">{formatDate(source.created_at)}</span>
+                                      </span>
+                                      <StatusBadge status={source.status} />
                                     </span>
-                                    <StatusBadge status={source.status} />
-                                  </span>
-                                </button>
-                              ))
-                            ) : (
-                              <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">No {type} sources</div>
-                            )}
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">No {type} sources</div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </ScrollArea>
-            </>
-          )}
-        </aside>
+                </ScrollArea>
+              </>
+            )}
+          </aside>
+        )}
 
         <section className="min-h-0 min-w-0">
           <ScrollArea className="h-full">

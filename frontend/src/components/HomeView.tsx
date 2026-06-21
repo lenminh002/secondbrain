@@ -42,7 +42,6 @@ export function HomeView({
                   <div>
                     <CardTitle className="text-base">{post.source_title}</CardTitle>
                     <CardDescription>
-                      @{account?.handle || post.account_id} ·{" "}
                       {formatDate(post.created_at)}
                     </CardDescription>
                   </div>
