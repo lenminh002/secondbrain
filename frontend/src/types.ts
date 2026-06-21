@@ -143,12 +143,21 @@ export type ToolCall = {
   name: string;
 };
 
+export type AgentTraceStep = {
+  stage: string;
+  title: string;
+  detail?: string;
+  status?: string;
+  metadata?: Record<string, unknown>;
+};
+
 export type ChatMessage = {
   role: "user" | "assistant";
   text: string;
   citations?: Citation[];
   graphContext?: GraphContext[];
   toolCalls?: ToolCall[];
+  agentTrace?: AgentTraceStep[];
   isStreaming?: boolean;
 };
 

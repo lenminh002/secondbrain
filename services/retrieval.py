@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import heapq
+import sys
 from typing import Any
 
 from embeddings import cosine_similarity, embed_text
@@ -36,6 +37,14 @@ def _rank_chunks(
         {**chunk, "score": round(score, 4)}
         for score, chunk in heapq.nlargest(limit, scored_chunks(), key=lambda item: item[0])
     ]
+
+
+def _embed_query(query: str) -> list[float]:
+    api_module = sys.modules.get("api")
+    api_embed_text = getattr(api_module, "embed_text", None)
+    if callable(api_embed_text) and api_embed_text is not embed_text:
+        return api_embed_text(query)
+    return embed_text(query)
 
 
 def _build_graph_context(
@@ -156,7 +165,7 @@ def search_knowledge_base(
     query: str,
     limit: int = 5,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
-    question_embedding = embed_text(query)
+    question_embedding = _embed_query(query)
     chunks = load_chunks(account_id, copy_result=False)
     top_chunks = _rank_chunks(question_embedding, chunks, limit=limit)
     expanded_chunks, graph_context = _build_graph_context(top_chunks, chunks, load_graph(account_id))
@@ -180,6 +189,90 @@ def search_knowledge_base(
         "graph_context": graph_context,
     }
     return result, citations, graph_context
+
+
+def explore_graph_connections(
+    account_id: str,
+    source_ids: list[str] | None = None,
+    concept_query: str | None = None,
+) -> dict[str, Any]:
+    graph = load_graph(account_id)
+    nodes = graph.get("nodes", [])
+    edges = graph.get("edges", [])
+    node_by_id = {str(node.get("id")): node for node in nodes if isinstance(node, dict)}
+    source_filter = {f"source-{source_id}" for source_id in source_ids or [] if source_id}
+    concept_query_lower = (concept_query or "").strip().lower()
+
+    concept_to_sources: dict[str, set[str]] = {}
+    for edge in edges:
+        if not isinstance(edge, dict):
+            continue
+        source = str(edge.get("source", ""))
+        target = str(edge.get("target", ""))
+        if not source.startswith("source-") or not target.startswith("concept-"):
+            continue
+        if source_filter and source not in source_filter:
+            continue
+        concept_node = node_by_id.get(target, {})
+        concept_label = str(concept_node.get("label", target))
+        if concept_query_lower and concept_query_lower not in concept_label.lower():
+            continue
+        concept_to_sources.setdefault(target, set()).add(source.removeprefix("source-"))
+
+    if source_filter:
+        for edge in edges:
+            source = str(edge.get("source", ""))
+            target = str(edge.get("target", ""))
+            if source not in source_filter or not target.startswith("concept-"):
+                continue
+            for neighbor in edges:
+                neighbor_source = str(neighbor.get("source", ""))
+                if str(neighbor.get("target", "")) == target and neighbor_source.startswith("source-"):
+                    concept_to_sources.setdefault(target, set()).add(
+                        neighbor_source.removeprefix("source-")
+                    )
+
+    connections = []
+    for concept_id, connected_source_ids in sorted(concept_to_sources.items()):
+        concept_node = node_by_id.get(concept_id, {})
+        connections.append(
+            {
+                "concept_id": concept_id,
+                "concept_label": str(concept_node.get("label", concept_id)),
+                "source_ids": sorted(connected_source_ids),
+            }
+        )
+
+    return {
+        "connections": connections[:12],
+        "node_count": len(nodes),
+        "edge_count": len(edges),
+    }
+
+
+def compare_sources(account_id: str, source_ids: list[str]) -> dict[str, Any]:
+    wanted_set = {source_id for source_id in source_ids if source_id}
+    sources = [source for source in load_sources(account_id) if source.get("id") in wanted_set]
+    concept_sets = [
+        {str(concept).strip() for concept in source.get("concepts", []) if str(concept).strip()}
+        for source in sources
+    ]
+    shared_concepts = sorted(set.intersection(*concept_sets)) if len(concept_sets) >= 2 else []
+
+    return {
+        "sources": [
+            {
+                "source_id": source.get("id"),
+                "title": source.get("title"),
+                "summary": source.get("summary", ""),
+                "concepts": source.get("concepts", []),
+                "claims": source.get("claims", []),
+            }
+            for source in sources
+        ],
+        "shared_concepts": shared_concepts,
+        "compared_count": len(sources),
+    }
 
 
 def get_source_detail(account_id: str, source_id: str) -> dict[str, Any]:

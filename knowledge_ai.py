@@ -42,6 +42,41 @@ CHAT_TOOLS = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "explore_graph_connections",
+        "description": "Explore concepts and source-to-source connections in the user's knowledge graph.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "source_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Source IDs to anchor graph exploration around.",
+                },
+                "concept_query": {
+                    "type": "string",
+                    "description": "Optional concept or topic to search for in graph labels.",
+                },
+            },
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "compare_sources",
+        "description": "Compare multiple saved sources by summary, concepts, claims, and overlap.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "source_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Two to five source IDs returned by search_knowledge_base.",
+                }
+            },
+            "required": ["source_ids"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -219,7 +254,9 @@ def answer_with_tools(
 You are a personal knowledge assistant. For simple greetings or conversational messages
 (e.g. "hello", "thanks", "how are you"), respond naturally without searching.
 For questions about specific topics, notes, or information, use the search_knowledge_base
-tool to find relevant saved content and cite sources inline like [1].
+tool to find relevant saved content and cite sources inline like [1]. When the question
+asks for relationships, themes, contradictions, or synthesis across notes, also use
+explore_graph_connections or compare_sources before answering.
 If the saved context is insufficient, say what is missing.
 """.strip()
 
@@ -308,7 +345,9 @@ def stream_with_tools(
 You are a personal knowledge assistant. For simple greetings or conversational messages
 (e.g. "hello", "thanks", "how are you"), respond naturally without searching.
 For questions about specific topics, notes, or information, use the search_knowledge_base
-tool to find relevant saved content and cite sources inline like [1].
+tool to find relevant saved content and cite sources inline like [1]. When the question
+asks for relationships, themes, contradictions, or synthesis across notes, also use
+explore_graph_connections or compare_sources before answering.
 If the saved context is insufficient, say what is missing.
 """.strip()
 
@@ -364,4 +403,3 @@ If the saved context is insufficient, say what is missing.
         messages.append({"role": "user", "content": tool_results})
 
     yield {"type": "done"}
-

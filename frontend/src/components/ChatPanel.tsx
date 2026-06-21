@@ -79,6 +79,27 @@ export function ChatPanel({
                       ))}
                     </div>
                   )}
+                  {!!message.agentTrace?.length && (
+                    <div className="mb-3 space-y-1 rounded-lg border bg-background/55 p-2 text-xs">
+                      <div className="font-medium text-muted-foreground">Agent system</div>
+                      {message.agentTrace.slice(0, 6).map((step, stepIndex) => (
+                        <div className="flex items-start gap-2" key={`${step.stage}-${stepIndex}`}>
+                          <Badge variant={step.status === "warning" ? "outline" : "secondary"} className="shrink-0">
+                            {step.stage}
+                          </Badge>
+                          <div className="min-w-0">
+                            <div className="font-medium leading-5">{step.title}</div>
+                            {step.detail && (
+                              <div className="line-clamp-2 text-muted-foreground">{step.detail}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {message.agentTrace.length > 6 && (
+                        <div className="text-muted-foreground">+{message.agentTrace.length - 6} more steps</div>
+                      )}
+                    </div>
+                  )}
                   {!!graphConcepts.length && (
                     <div className="mb-2 flex flex-wrap gap-1">
                       <Badge className="gap-1" variant="outline">

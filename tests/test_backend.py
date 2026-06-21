@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 import types
 from concurrent.futures import ThreadPoolExecutor
@@ -402,6 +403,185 @@ def test_chat_agent_tools_search_and_fetch_source_detail(tmp_path: Path, monkeyp
         {"name": "search_knowledge_base"},
         {"name": "get_source_detail"},
     ]
+
+
+def test_chat_simple_message_skips_research_loop(tmp_path: Path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    response = client.post("/chat", json={"message": "hello"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["citations"] == []
+    stages = [step["stage"] for step in payload["agent_trace"]]
+    assert stages == ["classify", "verification"]
+
+
+def test_chat_agentic_loop_emits_core_stages(tmp_path: Path, monkeypatch) -> None:
+    import storage
+
+    _patch_storage(tmp_path, monkeypatch)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    storage.save_sources(
+        TEST_ACCOUNT_ID,
+        [
+            {
+                "id": "source-a",
+                "type": "note",
+                "title": "Retrieval Note",
+                "summary": "Retrieval connects questions to grounded notes.",
+                "key_ideas": ["Ground answers"],
+                "concepts": ["Retrieval"],
+                "claims": ["Retrieval improves answer grounding."],
+                "content": "Retrieval connects questions to grounded notes.",
+            }
+        ],
+    )
+    storage.save_chunks(
+        TEST_ACCOUNT_ID,
+        [
+            {
+                "id": "chunk-a",
+                "source_id": "source-a",
+                "source_title": "Retrieval Note",
+                "section": "Notes",
+                "text": "Retrieval connects questions to grounded notes.",
+                "embedding": [1.0, 0.0],
+            }
+        ],
+    )
+    storage.save_graph(
+        TEST_ACCOUNT_ID,
+        {
+            "nodes": [
+                {"id": "source-source-a", "label": "Retrieval Note", "type": "source"},
+                {"id": "concept-retrieval", "label": "Retrieval", "type": "concept"},
+            ],
+            "edges": [
+                {"source": "source-source-a", "target": "concept-retrieval", "relation": "mentions"}
+            ],
+        },
+    )
+
+    import api
+
+    importlib.reload(api)
+    monkeypatch.setattr(api, "embed_text", lambda _: [1.0, 0.0])
+    client = TestClient(api.app)
+
+    response = client.post("/chat", json={"message": "How does retrieval connect notes?"})
+
+    assert response.status_code == 200
+    stages = [step["stage"] for step in response.json()["agent_trace"]]
+    for expected in ["classify", "planning", "gathering", "evaluating", "synthesis", "verification"]:
+        assert expected in stages
+
+
+def test_chat_weak_evidence_triggers_one_revision(tmp_path: Path, monkeypatch) -> None:
+    import storage
+
+    _patch_storage(tmp_path, monkeypatch)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    storage.save_sources(
+        TEST_ACCOUNT_ID,
+        [
+            {
+                "id": "source-a",
+                "type": "note",
+                "title": "Sparse Retrieval",
+                "summary": "Sparse retrieval note.",
+                "key_ideas": ["Sparse"],
+                "concepts": ["Retrieval"],
+                "claims": [],
+                "content": "Sparse retrieval note.",
+            }
+        ],
+    )
+    storage.save_chunks(
+        TEST_ACCOUNT_ID,
+        [
+            {
+                "id": "chunk-a",
+                "source_id": "source-a",
+                "source_title": "Sparse Retrieval",
+                "section": "Notes",
+                "text": "Sparse retrieval note.",
+                "embedding": [1.0, 0.0],
+            }
+        ],
+    )
+    storage.save_graph(TEST_ACCOUNT_ID, {"nodes": [], "edges": []})
+
+    import api
+
+    importlib.reload(api)
+    monkeypatch.setattr(api, "embed_text", lambda _: [1.0, 0.0])
+    client = TestClient(api.app)
+
+    response = client.post("/chat", json={"message": "What is retrieval?"})
+
+    assert response.status_code == 200
+    revisions = [step for step in response.json()["agent_trace"] if step["stage"] == "revising"]
+    assert len(revisions) == 1
+    assert revisions[0]["metadata"]["tool_call_count"] <= 6
+
+
+def test_chat_loop_respects_tool_call_cap(tmp_path: Path, monkeypatch) -> None:
+    import storage
+    from services import chat_service
+
+    _patch_storage(tmp_path, monkeypatch)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setattr(chat_service, "MAX_TOOL_CALLS", 2)
+    storage.save_chunks(
+        TEST_ACCOUNT_ID,
+        [
+            {
+                "id": "chunk-a",
+                "source_id": "source-a",
+                "source_title": "Capped Note",
+                "section": "Notes",
+                "text": "Capped loop retrieval note.",
+                "embedding": [1.0, 0.0],
+            }
+        ],
+    )
+    storage.save_graph(TEST_ACCOUNT_ID, {"nodes": [], "edges": []})
+
+    import api
+
+    importlib.reload(api)
+    monkeypatch.setattr(api, "embed_text", lambda _: [1.0, 0.0])
+    client = TestClient(api.app)
+
+    response = client.post("/chat", json={"message": "How does capped retrieval work?"})
+
+    assert response.status_code == 200
+    metadata = [step.get("metadata", {}) for step in response.json()["agent_trace"]]
+    max_seen = max(item.get("tool_call_count", 0) for item in metadata)
+    assert max_seen <= 2
+    assert "revising" not in [step["stage"] for step in response.json()["agent_trace"]]
+
+
+def test_chat_stream_emits_agent_steps_before_done(tmp_path: Path, monkeypatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+
+    with client.stream("POST", "/chat/stream", json={"message": "hello"}) as response:
+        assert response.status_code == 200
+        events = [
+            line.removeprefix("data: ")
+            for line in response.iter_lines()
+            if line.startswith("data: ")
+        ]
+
+    payloads = [json.loads(event) for event in events]
+    assert payloads[0]["type"] == "agent_step"
+    assert payloads[0]["stage"] == "classify"
+    assert payloads[-1]["type"] == "done"
+    assert payloads[-1]["agent_trace"][0]["stage"] == "classify"
 
 
 def test_chat_expands_context_with_graph_neighbors(tmp_path: Path, monkeypatch) -> None:

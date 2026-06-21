@@ -11,6 +11,8 @@ load_dotenv()
 
 from services.account_service import cleanup_stuck_processing_sources
 from routers import chat, misc, sources
+from embeddings import embed_text
+from knowledge_ai import answer_with_tools
 
 
 @asynccontextmanager

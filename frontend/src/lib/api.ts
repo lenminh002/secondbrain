@@ -1,4 +1,4 @@
-import type { AccountRecord, ApiError, Citation, GraphContext, KnowledgeGraph, PostRecord, SourceDetail, SourceRecord, ToolCall } from "@/types";
+import type { AccountRecord, AgentTraceStep, ApiError, Citation, GraphContext, KnowledgeGraph, PostRecord, SourceDetail, SourceRecord, ToolCall } from "@/types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
@@ -61,6 +61,7 @@ export async function sendChatMessage(message: string) {
     citations?: Citation[];
     graph_context?: GraphContext[];
     tool_calls?: ToolCall[];
+    agent_trace?: AgentTraceStep[];
   } & ApiError;
   if (!response.ok) throw new Error(payload.detail || "Chat failed.");
   return payload;
@@ -69,7 +70,13 @@ export async function sendChatMessage(message: string) {
 export interface StreamChatCallbacks {
   onText: (chunk: string) => void;
   onToolCall: (name: string) => void;
-  onDone: (citations: Citation[], graphContext: GraphContext[], toolCalls: ToolCall[]) => void;
+  onAgentStep?: (step: AgentTraceStep) => void;
+  onDone: (
+    citations: Citation[],
+    graphContext: GraphContext[],
+    toolCalls: ToolCall[],
+    agentTrace: AgentTraceStep[],
+  ) => void;
   onError?: (message: string) => void;
 }
 
@@ -115,11 +122,14 @@ export async function streamChatMessage(
         callbacks.onText(event["text"] as string);
       } else if (type === "tool_call") {
         callbacks.onToolCall(event["name"] as string);
+      } else if (type === "agent_step") {
+        callbacks.onAgentStep?.(event as AgentTraceStep);
       } else if (type === "done") {
         callbacks.onDone(
           (event["citations"] as Citation[]) ?? [],
           (event["graph_context"] as GraphContext[]) ?? [],
           (event["tool_calls"] as ToolCall[]) ?? [],
+          (event["agent_trace"] as AgentTraceStep[]) ?? [],
         );
         return;
       } else if (type === "error") {
