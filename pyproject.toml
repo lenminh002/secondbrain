@@ -1,0 +1,25 @@
+[project]
+name = "skywatch"
+version = "0.1.0"
+description = "Personal knowledge-base ingestion and assistant prototype."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "anthropic",
+  "fastapi",
+  "httpx",
+  "pillow",
+  "pypdf",
+  "python-multipart",
+  "uvicorn[standard]",
+  "youtube-transcript-api",
+]
+
+[dependency-groups]
+dev = [
+  "pytest",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

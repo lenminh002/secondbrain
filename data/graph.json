@@ -1,0 +1,151 @@
+{
+  "nodes": [
+    {
+      "id": "source-51b22c30-29e8-4db9-a18f-293970839f3e",
+      "label": "AI",
+      "type": "source"
+    },
+    {
+      "id": "concept-arti",
+      "label": "Arti",
+      "type": "concept"
+    },
+    {
+      "id": "concept-cial",
+      "label": "cial",
+      "type": "concept"
+    },
+    {
+      "id": "concept-intelligence",
+      "label": "Intelligence",
+      "type": "concept"
+    },
+    {
+      "id": "concept-modern",
+      "label": "Modern",
+      "type": "concept"
+    },
+    {
+      "id": "concept-approach",
+      "label": "Approach",
+      "type": "concept"
+    },
+    {
+      "id": "concept-third",
+      "label": "Third",
+      "type": "concept"
+    },
+    {
+      "id": "concept-edition",
+      "label": "Edition",
+      "type": "concept"
+    },
+    {
+      "id": "concept-prentice",
+      "label": "PRENTICE",
+      "type": "concept"
+    },
+    {
+      "id": "source-64e731e6-1748-45bf-bc1a-89b09f4f9985",
+      "label": "AI",
+      "type": "source"
+    },
+    {
+      "id": "source-a95afdcc-e42d-40ef-938e-e7ae43f68d93",
+      "label": "eee",
+      "type": "source"
+    },
+    {
+      "id": "concept-knowledge-base",
+      "label": "Knowledge base",
+      "type": "concept"
+    }
+  ],
+  "edges": [
+    {
+      "source": "source-51b22c30-29e8-4db9-a18f-293970839f3e",
+      "target": "concept-arti",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-51b22c30-29e8-4db9-a18f-293970839f3e",
+      "target": "concept-cial",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-51b22c30-29e8-4db9-a18f-293970839f3e",
+      "target": "concept-intelligence",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-51b22c30-29e8-4db9-a18f-293970839f3e",
+      "target": "concept-modern",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-51b22c30-29e8-4db9-a18f-293970839f3e",
+      "target": "concept-approach",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-51b22c30-29e8-4db9-a18f-293970839f3e",
+      "target": "concept-third",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-51b22c30-29e8-4db9-a18f-293970839f3e",
+      "target": "concept-edition",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-51b22c30-29e8-4db9-a18f-293970839f3e",
+      "target": "concept-prentice",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-64e731e6-1748-45bf-bc1a-89b09f4f9985",
+      "target": "concept-arti",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-64e731e6-1748-45bf-bc1a-89b09f4f9985",
+      "target": "concept-cial",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-64e731e6-1748-45bf-bc1a-89b09f4f9985",
+      "target": "concept-intelligence",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-64e731e6-1748-45bf-bc1a-89b09f4f9985",
+      "target": "concept-modern",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-64e731e6-1748-45bf-bc1a-89b09f4f9985",
+      "target": "concept-approach",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-64e731e6-1748-45bf-bc1a-89b09f4f9985",
+      "target": "concept-third",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-64e731e6-1748-45bf-bc1a-89b09f4f9985",
+      "target": "concept-edition",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-64e731e6-1748-45bf-bc1a-89b09f4f9985",
+      "target": "concept-prentice",
+      "relation": "mentions"
+    },
+    {
+      "source": "source-a95afdcc-e42d-40ef-938e-e7ae43f68d93",
+      "target": "concept-knowledge-base",
+      "relation": "mentions"
+    }
+  ]
+}
