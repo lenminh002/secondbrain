@@ -1,6 +1,15 @@
 # Second Brain
 
-Second Brain is a hackathon MVP for a personal knowledge-base assistant. It helps users save knowledge from notes, PDFs, and links, then recall it later through search, generated summaries, a knowledge graph, and an agent chat experience.
+Second Brain is a personal knowledge-base assistant. It helps users save knowledge from notes, PDFs, and links, then recall it later through search, generated summaries, a knowledge graph, and an agent chat experience.
+
+![Second Brain Memories View](photos/memories.png)
+*Memory Detail View with summary, key ideas, and source file metadata.*
+
+![Second Brain Knowledge Graph View](photos/graph.jpg)
+*Interactive Knowledge Graph connecting notes, concepts, and tags.*
+
+![Second Brain Agent Chat View](photos/chat.png)
+*Librarian Agent Chat showing tool executions, retrieved graph concepts, and streaming grounded responses.*
 
 The app uses a FastAPI backend, a React/Vite frontend, Firebase Auth, optional Firestore persistence, Anthropic Claude for enrichment and chat, and OpenAI embeddings when configured.
 
@@ -11,8 +20,9 @@ The app uses a FastAPI backend, a React/Vite frontend, Firebase Auth, optional F
 - Build retrieval chunks and a knowledge graph that connects related ideas.
 - Chat with an agent that uses saved knowledge, citations, graph context, tool traces, and streaming responses.
 - Edit saved memory content and regenerate related artifacts.
+- Delete saved memories and their generated artifacts.
 - Archive chat sessions back into the knowledge base.
-- Store original uploaded files with GitHub by default or Google Drive as an alternate provider.
+- Store original uploaded files with GitHub.
 - Run locally with in-memory demo data or persist data in Firebase Firestore.
 
 ## Tech Stack
@@ -23,7 +33,6 @@ The app uses a FastAPI backend, a React/Vite frontend, Firebase Auth, optional F
 - Anthropic Claude API
 - OpenAI Embeddings API
 - GitHub Contents API
-- Google Drive API
 - Tailwind CSS, Radix UI, Vaul, Lucide React
 - D3 Force, React Markdown, Remark GFM
 - PyPDF, Pillow, HTTPX
@@ -47,7 +56,7 @@ Copy the example backend environment file:
 cp .env.example .env
 ```
 
-The backend can run without AI keys for local development. Without `ANTHROPIC_API_KEY`, it uses local fallback enrichment. Without `OPENAI_API_KEY`, it uses deterministic local embeddings.
+The backend can run without AI keys for local development. Without `ANTHROPIC_API_KEY`, ingestion uses local fallback enrichment. Without `OPENAI_API_KEY`, embeddings use deterministic local vectors.
 
 Common backend variables:
 
@@ -128,7 +137,7 @@ Firestore collections used by the backend are `accounts`, `sources`, `chunks`, `
 
 PDF uploads and scraped-link Markdown snapshots are stored outside the database, then linked from source metadata.
 
-The default provider is GitHub:
+Original files are stored in GitHub:
 
 ```bash
 ORIGINAL_FILE_STORAGE=github
@@ -138,17 +147,7 @@ GITHUB_STORAGE_BRANCH="main"
 GITHUB_STORAGE_PATH_PREFIX="uploads"
 ```
 
-To use Google Drive instead:
-
-```bash
-ORIGINAL_FILE_STORAGE=drive
-GOOGLE_DRIVE_FOLDER_ID="your-drive-folder-id"
-GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/absolute/path/to/drive-service-account.json"
-# or:
-GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
-```
-
-For Drive storage, share the target folder with the service account email before ingesting PDFs or links.
+GitHub storage requires a token with write access to `GITHUB_STORAGE_REPO`.
 
 ## API
 
@@ -160,6 +159,8 @@ For Drive storage, share the target folder with the service account email before
   - fields: `type=note|pdf|link`, `title`, `text`, `source_url`, `file`
 - `PATCH /sources/{source_id}`
   - JSON body: `{ "content": "updated memory content" }`
+- `DELETE /sources/{source_id}`
+  - deletes the memory and generated source artifacts
 - `GET /posts`
 - `GET /graph`
 - `POST /chat`
